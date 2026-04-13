@@ -172,7 +172,7 @@ Pydantic-моделі для валідації вхідних та вихідн
 | **ReportLab / WeasyPrint** | Генерація PDF-звітів | **Друк звітів** по всіх 6 сутностях системи |
 | **React** | SPA-фронтенд | **Зручний та інтуїтивно зрозумілий UI** для обох ролей |
 | **Alembic** | Міграції бази даних | Версіонування схеми БД, відтворюване розгортання |
-| **Docker / Docker Compose** | Контейнеризація | Ізольоване середовище для FastAPI + PostgreSQL |
+| **Supabase** | Хмарна PostgreSQL БД | Хостинг бази даних; підключення через стандартний psycopg2 connection string |
 
 ---
 
@@ -223,7 +223,7 @@ zlagoda/
 │   │
 │   ├── migrations/                  # Alembic міграції
 │   ├── requirements.txt
-│   └── Dockerfile
+│   └── .env                         # SUPABASE_DB_URL, SECRET_KEY (не комітити!)
 │
 ├── frontend/
 │   ├── src/
@@ -232,9 +232,8 @@ zlagoda/
 │   │   │   └── cashier/             # Сторінки касира
 │   │   ├── components/
 │   │   └── api/                     # HTTP-клієнт (axios)
-│   └── Dockerfile
+│   └── ...
 │
-├── docker-compose.yml
 └── README.md
 ```
 
