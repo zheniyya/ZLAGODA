@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# IDEs and Editors (налаштування твого редактора коду)
+.vscode/
+.idea/
+
+# OS generated files (системні файли Windows/Mac)
+.DS_Store
+Thumbs.db
