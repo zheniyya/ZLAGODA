@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from app.schemas.base import EmployeeCreate, EmployeeResponse
-from security.permissions import require_manager, get_current_user
-from security.hashing import get_password_hash
-from database import get_db_connection
+from app.security.permissions import require_manager, get_current_user
+from app.security.hashing import get_password_hash
+from app.database import get_db_connection
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 

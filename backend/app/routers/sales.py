@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
-from app.schemas.base import SaleBase, SaleResponse
-from security.permissions import require_manager, get_current_user
-from database import get_db_connection
+from app.schemas.base import SaleResponse
+from app.security.permissions import require_manager, get_current_user
+from app.database import get_db_connection
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
 

@@ -6,7 +6,8 @@ from app.routers import (
     store_products,
     customer_cards,
     checks,
-    sales
+    sales,
+    reports
 )
 
 app = FastAPI(title="АІС ZLAGODA", description="Бекенд для міні-супермаркету")
@@ -19,6 +20,7 @@ app.include_router(store_products.router)
 app.include_router(customer_cards.router)
 app.include_router(checks.router)
 app.include_router(sales.router)
+app.include_router(reports.router)
 
 @app.get("/")
 def root():

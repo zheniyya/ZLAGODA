@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from jose import JWTError, jwt
-from security.jwt import oauth2_scheme, SECRET_KEY, ALGORITHM
+from app.security.jwt import oauth2_scheme, SECRET_KEY, ALGORITHM
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
