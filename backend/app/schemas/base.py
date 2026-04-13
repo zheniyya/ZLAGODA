@@ -3,17 +3,17 @@ from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
-# --- EMPLOYEE  ---
+# --- EMPLOYEE ---
 class EmployeeBase(BaseModel):
     id_employee: str = Field(..., max_length=10)
     empl_surname: str = Field(..., max_length=50)
     empl_name: str = Field(..., max_length=50)
     empl_patronymic: Optional[str] = Field(None, max_length=50)
     empl_role: str = Field(..., max_length=10)
-    salary: Decimal = Field(..., ge=0) # Не від'ємне
+    salary: Decimal = Field(..., ge=0)
     date_of_birth: date
     date_of_start: date
-    phone_number: str = Field(..., max_length=13) # До 13 символів
+    phone_number: str = Field(..., max_length=13)
     city: str = Field(..., max_length=50)
     street: str = Field(..., max_length=50)
     zip_code: str = Field(..., max_length=9)
@@ -21,7 +21,6 @@ class EmployeeBase(BaseModel):
     @field_validator('date_of_birth')
     @classmethod
     def validate_age(cls, v):
-        # Працівнику має бути не менше 18 років
         today = date.today()
         age = today.year - v.year - ((today.month, today.day) < (v.month, v.day))
         if age < 18:
@@ -29,34 +28,34 @@ class EmployeeBase(BaseModel):
         return v
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    password: str = Field(..., min_length=4, description="Пароль для входу")
 
 class EmployeeResponse(EmployeeBase):
     pass
 
 
-# --- CATEGORY  ---
+# --- CATEGORY ---
 class CategoryBase(BaseModel):
     category_name: str = Field(..., max_length=50)
 
 class CategoryCreate(CategoryBase):
-    category_number: int
+    pass # Фронтенд надсилає тільки ім'я. ID генерує база.
 
 class CategoryResponse(CategoryBase):
-    category_number: int
+    category_number: int # ID повертається вже з бази
 
 
-# --- PRODUCT  ---
+# --- PRODUCT ---
 class ProductBase(BaseModel):
     category_number: int
     product_name: str = Field(..., max_length=50)
     characteristics: str = Field(..., max_length=100)
 
 class ProductCreate(ProductBase):
-    id_product: int
+    pass # Фронтенд не надсилає id_product
 
 class ProductResponse(ProductBase):
-    id_product: int
+    id_product: int # Повертається з бази
 
 
 # --- STORE_PRODUCT ---
@@ -64,8 +63,8 @@ class StoreProductBase(BaseModel):
     UPC: str = Field(..., max_length=12)
     UPC_prom: Optional[str] = Field(None, max_length=12)
     id_product: int
-    selling_price: Decimal = Field(..., ge=0) # Не від'ємне 
-    products_number: int = Field(..., ge=0)   # Не від'ємне
+    selling_price: Decimal = Field(..., ge=0)
+    products_number: int = Field(..., ge=0)
     promotional_product: bool
 
 class StoreProductCreate(StoreProductBase):
@@ -77,15 +76,16 @@ class StoreProductResponse(StoreProductBase):
 
 # --- CUSTOMER_CARD ---
 class CustomerCardBase(BaseModel):
-    card_number: str = Field(..., max_length=13)
+    # Номер карти зазвичай вводить касир або генерує сканер
+    card_number: str = Field(..., max_length=13) 
     cust_surname: str = Field(..., max_length=50)
     cust_name: str = Field(..., max_length=50)
     cust_patronymic: Optional[str] = Field(None, max_length=50)
-    phone_number: str = Field(..., max_length=13) # До 13 символів
+    phone_number: str = Field(..., max_length=13)
     city: Optional[str] = Field(None, max_length=50)
     street: Optional[str] = Field(None, max_length=50)
     zip_code: Optional[str] = Field(None, max_length=9)
-    percent: int = Field(..., ge=0) # Не від'ємне
+    percent: int = Field(..., ge=0)
 
 class CustomerCardCreate(CustomerCardBase):
     pass
@@ -95,30 +95,28 @@ class CustomerCardResponse(CustomerCardBase):
 
 
 # --- CHECK ---
-class CheckBase(BaseModel):
-    check_number: str = Field(..., max_length=10)
-    id_employee: str = Field(..., max_length=10)
+# ВИПРАВЛЕННЯ: Касир при створенні передає ТІЛЬКИ карту клієнта (якщо є)
+class CheckCreate(BaseModel):
     card_number: Optional[str] = Field(None, max_length=13)
+
+# А ось у відповіді ми віддаємо всі поля, які згенерувала база/бекенд
+class CheckResponse(BaseModel):
+    check_number: str
+    id_employee: str
+    card_number: Optional[str]
     print_date: datetime
-    sum_total: Decimal = Field(..., ge=0) # Не від'ємне 
-    vat: Decimal = Field(..., ge=0)       # Не від'ємне 
-
-class CheckCreate(CheckBase):
-    pass
-
-class CheckResponse(CheckBase):
-    pass
+    sum_total: Decimal
+    vat: Decimal
 
 
-# --- SALE  ---
-class SaleBase(BaseModel):
+# --- SALE ---
+class SaleCreate(BaseModel):
     UPC: str = Field(..., max_length=12)
-    check_number: str = Field(..., max_length=10)
-    product_number: int = Field(..., ge=0)    # Не від'ємне 
-    selling_price: Decimal = Field(..., ge=0) # Не від'ємне 
+    product_number: int = Field(..., ge=1) # Скільки штук купує
+    # check_number береться з URL, selling_price береться з БД
 
-class SaleCreate(SaleBase):
-    pass
-
-class SaleResponse(SaleBase):
-    pass
+class SaleResponse(BaseModel):
+    UPC: str
+    check_number: str
+    product_number: int
+    selling_price: Decimal
