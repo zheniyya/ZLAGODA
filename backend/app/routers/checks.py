@@ -54,6 +54,23 @@ def get_check(check_number: str, current_user: dict = Depends(get_current_user),
             raise HTTPException(status_code=404, detail="Чек не знайдено")
         return check
 
+@router.get("/{check_number}/items")
+def get_check_items(check_number: str, current_user: dict = Depends(get_current_user), conn = Depends(get_db_connection)):
+    """Отримання списку куплених товарів для конкретного чеку."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT 
+                p.product_name AS name, 
+                s.product_number AS qty, 
+                s.selling_price AS price
+            FROM Sale s
+            JOIN Store_Product sp ON s.UPC = sp.UPC
+            JOIN Product p ON sp.id_product = p.id_product
+            WHERE s.check_number = %s
+        """, (check_number,))
+        items = cur.fetchall()
+        return items
+
 @router.delete("/{check_number}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_check(check_number: str, current_user: dict = Depends(require_manager), conn = Depends(get_db_connection)):
     """Видалення чеку. Тільки менеджер."""

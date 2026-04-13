@@ -3,11 +3,10 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
-# from reportlab.pdfbase import pdfmetrics
-# from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
-# Розкоментуйте це, коли додасте файл шрифту для підтримки української мови
-# pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
 
 def generate_pdf_report(title: str, headers: list, data: list) -> io.BytesIO:
     """Генерує PDF таблицю з переданих даних."""
@@ -18,8 +17,8 @@ def generate_pdf_report(title: str, headers: list, data: list) -> io.BytesIO:
     
     styles = getSampleStyleSheet()
     # Якщо підключили кирилицю, змініть шрифт у стилі:
-    # title_style = styles['Title']
-    # title_style.fontName = 'DejaVuSans'
+    title_style = styles['Title']
+    title_style.fontName = 'DejaVuSans'
     elements.append(Paragraph(title, styles['Title']))
     
     # Конвертуємо всі дані у рядки (щоб уникнути помилок з числами чи датами)
@@ -32,7 +31,7 @@ def generate_pdf_report(title: str, headers: list, data: list) -> io.BytesIO:
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#4CAF50")), # Зелений заголовок
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        # ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'), # Розкоментувати для кирилиці
+        ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'), # Розкоментувати для кирилиці
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), # Заголовок жирним
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),

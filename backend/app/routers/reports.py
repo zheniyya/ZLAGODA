@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from fastapi.responses import StreamingResponse
 from app.security.permissions import require_manager
 from app.database import get_db_connection
@@ -9,7 +9,6 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 @router.get("/employees")
 def report_employees(current_user: dict = Depends(require_manager), conn = Depends(get_db_connection)):
     with conn.cursor() as cur:
-        # Вибираємо тільки ті поля, які безпечно показувати (без хешу пароля)
         cur.execute("""
             SELECT id_employee, empl_surname, empl_name, role, phone_number, salary 
             FROM Employee ORDER BY empl_surname
@@ -17,12 +16,12 @@ def report_employees(current_user: dict = Depends(require_manager), conn = Depen
         data = cur.fetchall()
         
     headers = ["ID", "Surname", "Name", "Role", "Phone", "Salary"]
-    # Перетворюємо список словників на список списків (для таблиці)
     rows = [[row[h] for h in row.keys()] for row in data]
     
     pdf_buffer = generate_pdf_report("Employees Report", headers, rows)
-    return StreamingResponse(
-        pdf_buffer, 
+    
+    return Response(
+        content=pdf_buffer.getvalue(), 
         media_type="application/pdf", 
         headers={"Content-Disposition": "attachment; filename=employees_report.pdf"}
     )
@@ -43,7 +42,11 @@ def report_products(current_user: dict = Depends(require_manager), conn = Depend
     rows = [[row[h] for h in row.keys()] for row in data]
     
     pdf_buffer = generate_pdf_report("Products Report", headers, rows)
-    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=products_report.pdf"})
+    return Response(
+        content=pdf_buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=products_report.pdf"}
+    )
 
 @router.get("/checks")
 def report_checks(current_user: dict = Depends(require_manager), conn = Depends(get_db_connection)):
@@ -58,7 +61,7 @@ def report_checks(current_user: dict = Depends(require_manager), conn = Depends(
     rows = [[row[h] for h in row.keys()] for row in data]
     
     pdf_buffer = generate_pdf_report("Checks Report", headers, rows)
-    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=checks_report.pdf"})
+    return Response(content=pdf_buffer.getvalue(), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=checks_report.pdf"})
 
 # Додаткові звіти для Categories, Store Products та Customer Cards робляться за аналогією:
 @router.get("/store_products")
@@ -72,4 +75,30 @@ def report_store_products(current_user: dict = Depends(require_manager), conn = 
     headers = ["UPC", "Product ID", "Price", "Quantity", "Is Promo"]
     rows = [[row[h] for h in row.keys()] for row in data]
     pdf_buffer = generate_pdf_report("Store Products Report", headers, rows)
-    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=store_products_report.pdf"})
+    return Response(content=pdf_buffer.getvalue(), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=store_products_report.pdf"})
+
+@router.get("/categories")
+def report_categories(current_user: dict = Depends(require_manager), conn = Depends(get_db_connection)):
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT category_number, category_name 
+            FROM Category ORDER BY category_name
+        """)
+        data = cur.fetchall()
+    headers = ["Category No", "Category Name"]
+    rows = [[row[h] for h in row.keys()] for row in data]
+    pdf_buffer = generate_pdf_report("Categories Report", headers, rows)
+    return Response(content=pdf_buffer.getvalue(), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=categories_report.pdf"})
+
+@router.get("/customer_cards")
+def report_customer_cards(current_user: dict = Depends(require_manager), conn = Depends(get_db_connection)):
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT card_number, discount, registration_date 
+            FROM Customer_Card ORDER BY registration_date DESC
+        """)
+        data = cur.fetchall()
+    headers = ["Card No", "Discount", "Registration Date"]
+    rows = [[row[h] for h in row.keys()] for row in data]
+    pdf_buffer = generate_pdf_report("Customer Cards Report", headers, rows)
+    return Response(content=pdf_buffer.getvalue(), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=customer_cards_report.pdf"})
