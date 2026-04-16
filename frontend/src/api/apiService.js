@@ -2,26 +2,37 @@ import axiosClient from './axiosClient';
 import * as mockDb from '../data/mockData';
 
 // Перемикач для тестування без бекенду
-const USE_MOCK = true; 
+const USE_MOCK = false; // <-- FIX: set to false to enable real backend
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const apiService = {
   // --- AUTH ---
   login: async (credentials) => {
-    if (USE_MOCK) {
-      await delay(300);
-      const { id, password } = credentials;
-      if (id === 'manager' && password === '123') {
-        return { token: "fake_manager_jwt", user: { role: 'manager', id: 'manager_1' } };
-      }
-      if (id === 'cashier' && password === '123') {
-        return { token: "fake_cashier_jwt", user: { role: 'cashier', id: 'cashier_1' } };
-      }
-      throw new Error("Невірний логін або пароль");
+  if (USE_MOCK) {
+    await delay(300);
+    const { username, password } = credentials;
+    if (username === 'manager' && password === '123') {
+      return { token: "fake_manager_jwt", user: { role: 'Manager', id: 'manager_1' } };
     }
-    const res = await axiosClient.post('/login', credentials);
-    return res.data;
-  },
+    if (username === 'cashier' && password === '123') {
+      return { token: "fake_cashier_jwt", user: { role: 'Cashier', id: 'cashier_1' } };
+    }
+    throw new Error("Невірний логін або пароль");
+  }
+
+  // Створюємо form-urlencoded тіло, яке очікує OAuth2PasswordRequestForm
+  const formData = new URLSearchParams();
+formData.append('username', credentials.username);
+formData.append('password', credentials.password);
+await axiosClient.post('/auth/login', formData, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+});
+
+  const res = await axiosClient.post('/auth/login', formData, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  });
+  return res.data;
+},
 
   // --- EMPLOYEES ---
   getEmployees: async () => {
@@ -60,7 +71,7 @@ export const apiService = {
         return { ...sp, product_name: prod.product_name, category_name: cat.category_name };
       });
     }
-    const res = await axiosClient.get('/store-products');
+    const res = await axiosClient.get('/store_products');
     return res.data;
   },
 
@@ -72,7 +83,7 @@ export const apiService = {
       const prod = mockDb.mockProducts.find(p => p.id_product === sp.id_product);
       return { ...sp, product_name: prod.product_name };
     }
-    const res = await axiosClient.get(`/store-products/${upc}`);
+    const res = await axiosClient.get(`/store_products/${upc}`);
     return res.data;
   },
 
@@ -81,7 +92,7 @@ export const apiService = {
       await delay(300);
       return data;
     }
-    return (await axiosClient.post('/store-products', data)).data;
+    return (await axiosClient.post('/store_products', data)).data;
   },
 
   updateStoreProduct: async (upc, data) => {
@@ -89,14 +100,14 @@ export const apiService = {
       await delay(300);
       return data;
     }
-    return (await axiosClient.put(`/store-products/${upc}`, data)).data;
+    return (await axiosClient.put(`/store_products/${upc}`, data)).data;
   },
 
   deleteStoreProduct: async (upc) => {
     if (USE_MOCK) {
       await delay(300);
       return { success: true };
-    } return await axiosClient.delete(`/store-products/${upc}`);
+    } return await axiosClient.delete(`/store_products/${upc}`);
   },
 
   getStoreProducts: async () => {
@@ -104,7 +115,7 @@ export const apiService = {
       await delay(200);
       return [...mockDb.mockStoreProducts];
     }
-    const res = await axiosClient.get('/store-products');
+    const res = await axiosClient.get('/store_products');
     return res.data;
   },
 
@@ -114,7 +125,7 @@ export const apiService = {
       await delay(200);
       return [...mockDb.mockCustomers];
     }
-    const res = await axiosClient.get('/customer-cards');
+    const res = await axiosClient.get('/customer_cards');
     return res.data;
   },
 
@@ -123,7 +134,7 @@ export const apiService = {
         await delay(100);
         return mockDb.mockCustomers.find(c => c.card_number === cardNumber) || null;
     }
-    const res = await axiosClient.get(`/customer-cards/${cardNumber}`);
+    const res = await axiosClient.get(`/customer_cards/${cardNumber}`);
     return res.data;
   },
 
@@ -159,9 +170,9 @@ export const apiService = {
   updateEmployee: async (id, data) => { if (USE_MOCK) { await delay(300); return data; } return (await axiosClient.put(`/employees/${id}`, data)).data; },
   
   // Клієнти (Касир: Додавання/Оновлення. Менеджер: Додавання/Оновлення/Видалення)
-  createCustomer: async (data) => { if (USE_MOCK) { await delay(300); return { ...data, card_number: `CARD${Date.now().toString().slice(-4)}` }; } return (await axiosClient.post('/customer-cards', data)).data; },
-  updateCustomer: async (id, data) => { if (USE_MOCK) { await delay(300); return data; } return (await axiosClient.put(`/customer-cards/${id}`, data)).data; },
-  deleteCustomer: async (id) => { if (USE_MOCK) { await delay(300); return { success: true }; } return await axiosClient.delete(`/customer-cards/${id}`); },
+  createCustomer: async (data) => { if (USE_MOCK) { await delay(300); return { ...data, card_number: `CARD${Date.now().toString().slice(-4)}` }; } return (await axiosClient.post('/customer_cards', data)).data; },
+  updateCustomer: async (id, data) => { if (USE_MOCK) { await delay(300); return data; } return (await axiosClient.put(`/customer_cards/${id}`, data)).data; },
+  deleteCustomer: async (id) => { if (USE_MOCK) { await delay(300); return { success: true }; } return await axiosClient.delete(`/customer_cards/${id}`); },
 
   // Товари (Тільки Менеджер)
   createProduct: async (data) => { if (USE_MOCK) { await delay(300); return data; } return (await axiosClient.post('/products', data)).data; },

@@ -1,7 +1,10 @@
 def get_employee_by_id(conn, id_employee: str):
+    print(f"[DEBUG] Запит до БД: SELECT * FROM Employee WHERE id_employee = {id_employee}")
     with conn.cursor() as cur:
         cur.execute("SELECT * FROM Employee WHERE id_employee = %s", (id_employee,))
-        return cur.fetchone()
+        result = cur.fetchone()
+        print(f"[DEBUG] Результат запиту: {result}")
+        return result
 
 def create_employee(conn, empl_data, hashed_password):
     with conn.cursor() as cur:

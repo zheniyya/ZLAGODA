@@ -8,11 +8,10 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // В реальності тут буде розшифровка JWT
-    const storedUser = localStorage.getItem('user');
+   const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+  setUser(JSON.parse(storedUser));
+   }
   }, []);
 
   const loginAuth = (userData) => {

@@ -1,16 +1,13 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8000/api', 
+  baseURL: '/api',   // Відносний шлях – буде перенаправлено через проксі
 });
 
-// Додаємо "перехоплювач" запитів
+// Перехоплювач для додавання токена
 axiosClient.interceptors.request.use((config) => {
-  // Дістаємо токен з localStorage (переконайтеся, що ви його туди зберігаєте при логіні)
-  const token = localStorage.getItem('token'); 
-  
+  const token = localStorage.getItem('token');
   if (token) {
-    // Додаємо токен у форматі Bearer
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
