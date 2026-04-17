@@ -59,19 +59,21 @@ class ProductResponse(ProductBase):
 
 
 # --- STORE_PRODUCT ---
+# --- STORE_PRODUCT ---
 class StoreProductBase(BaseModel):
-    UPC: str = Field(..., max_length=12)
-    UPC_prom: Optional[str] = Field(None, max_length=12)
+    upc: str = Field(..., max_length=12)
+    upc_prom: Optional[str] = Field(None, max_length=12)
     id_product: int
     selling_price: Decimal = Field(..., ge=0)
     products_number: int = Field(..., ge=0)
     promotional_product: bool
 
+class StoreProductResponse(StoreProductBase):
+    pass
+
 class StoreProductCreate(StoreProductBase):
     pass
 
-class StoreProductResponse(StoreProductBase):
-    pass
 
 
 # --- CUSTOMER_CARD ---

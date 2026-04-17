@@ -3,6 +3,14 @@ from jose import JWTError, jwt
 from app.security.jwt import oauth2_scheme, SECRET_KEY, ALGORITHM
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    print(f"[AUTH] Token received: {token[:50]}...")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"[AUTH] Payload: {payload}")
+    except Exception as e:
+        print(f"[AUTH] Decode error: {e}")
+        raise HTTPException(status_code=401)
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Недійсні облікові дані",
