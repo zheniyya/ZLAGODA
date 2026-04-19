@@ -17,3 +17,4 @@ ENV/
 # OS generated files (системні файли Windows/Mac)
 .DS_Store
 Thumbs.db
+node_modules/

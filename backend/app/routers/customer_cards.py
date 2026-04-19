@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+from typing import List, Optional
 from app.schemas.base import CustomerCardBase, CustomerCardResponse
 from app.security.permissions import require_manager, get_current_user
 from app.database import get_db_connection, put_db_connection
@@ -25,12 +25,34 @@ def create_customer_card(customer_card: CustomerCardBase, current_user: dict = D
         put_db_connection(conn)
 
 @router.get("/", response_model=List[CustomerCardResponse])
-def get_all_customer_cards(current_user: dict = Depends(get_current_user)):
+def get_all_customer_cards(
+        search: Optional[str] = None,
+        min_discount: Optional[int] = None,
+        current_user: dict = Depends(get_current_user)
+):
+    """
+    Отримати всі карти клієнтів.
+    Параметри фільтрації: search (по назві/номеру), min_discount (мінімальна знижка %)
+    """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM Customer_Card ORDER BY cust_surname")
-            return cur.fetchall()
+            conditions = []
+            params = []
+            
+            if search:
+                conditions.append("(card_number ILIKE %s OR cust_surname ILIKE %s OR cust_name ILIKE %s)")
+                params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+            if min_discount is not None:
+                conditions.append("percent >= %s")
+                params.append(min_discount)
+            
+            where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+            cur.execute(f"SELECT * FROM Customer_Card {where} ORDER BY cust_surname", params)
+            cards = cur.fetchall()
+        return cards
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Помилка завантаження карт: {str(e)}")
     finally:
         put_db_connection(conn)
 

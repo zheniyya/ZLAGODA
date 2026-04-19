@@ -24,7 +24,10 @@ def get_all_categories(current_user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM Category ORDER BY category_name")
-            return cur.fetchall()
+            categories = cur.fetchall()
+        return categories
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Помилка завантаження категорій: {str(e)}")
     finally:
         put_db_connection(conn)
 

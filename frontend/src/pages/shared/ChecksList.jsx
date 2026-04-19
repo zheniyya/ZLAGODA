@@ -1,31 +1,47 @@
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
+import debounce from 'lodash/debounce';
 
 const ChecksList = () => {
   const { user } = useContext(AuthContext);
   const [checks, setChecks] = useState([]);
   const [selectedCheck, setSelectedCheck] = useState(null);
   const [checkDetails, setCheckDetails] = useState([]);
-  
-  // Фільтр "З - До"
+  const [loading, setLoading] = useState(false);
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [cashierId, setCashierId] = useState('');
 
-  const loadChecks = async () => {
+  const loadChecks = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await apiService.getChecks();
+      const params = {};
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+      if (user?.role === 'manager' && cashierId) params.cashier_id = cashierId;
+      else if (user?.role === 'cashier') params.cashier_id = user.id;
+
+      const data = await apiService.getChecks(params);
       setChecks(data);
     } catch (error) {
       console.error("Помилка завантаження чеків:", error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [startDate, endDate, cashierId, user]);
 
-  useEffect(() => { loadChecks(); }, []);
+  const debouncedLoad = useCallback(debounce(loadChecks, 300), [loadChecks]);
+
+  useEffect(() => {
+    debouncedLoad();
+    return () => debouncedLoad.cancel();
+  }, [debouncedLoad]);
 
   const openDetails = async (checkNumber) => {
     setSelectedCheck(checkNumber);
-    setCheckDetails([]); // Очищаємо попередні дані на час завантаження
+    setCheckDetails([]);
     try {
       const details = await apiService.getCheckDetails(checkNumber);
       setCheckDetails(details);
@@ -46,50 +62,46 @@ const ChecksList = () => {
     }
   };
 
-  const filteredChecks = useMemo(() => {
-    let result = checks;
-    if (user?.role === 'cashier') {
-        result = result.filter(c => c.id_employee === user.id);
-    }
-    // Логіка фільтрації за періодом
-    if (startDate) {
-        result = result.filter(c => new Date(c.print_date) >= new Date(startDate));
-    }
-    if (endDate) {
-        // Додаємо 1 день до endDate, щоб включити кінець обраного дня
-        const end = new Date(endDate);
-        end.setDate(end.getDate() + 1);
-        result = result.filter(c => new Date(c.print_date) < end);
-    }
-    return result;
-  }, [checks, user, startDate, endDate]);
-
-  const totalSum = filteredChecks.reduce((acc, c) => acc + Number(c.sum_total), 0);
+  const totalSum = checks.reduce((acc, c) => acc + Number(c.sum_total), 0);
 
   return (
     <div className="p-6 relative">
       <h2 className="text-2xl font-bold mb-6">{user?.role === 'manager' ? 'Всі Чеки (Історія)' : 'Мої Чеки'}</h2>
 
-      {/* ШИРОКІ ПОЛЯ ВВОДУ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white p-6 rounded-lg shadow-sm">
-        <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Початкова дата (З):</label>
-            <input type="date" className="w-full border p-3 rounded-lg focus:ring focus:ring-blue-200" value={startDate} onChange={e => setStartDate(e.target.value)} />
-        </div>
-        <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Кінцева дата (До):</label>
-            <input type="date" className="w-full border p-3 rounded-lg focus:ring focus:ring-blue-200" value={endDate} onChange={e => setEndDate(e.target.value)} />
-        </div>
-        <div className="flex items-end space-x-2">
-            <button onClick={() => { setStartDate(''); setEndDate(''); }} className="w-full bg-gray-200 p-3 rounded-lg hover:bg-gray-300 font-semibold transition">Скинути</button>
-        </div>
-        
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-white p-6 rounded-lg shadow-sm">
         {user?.role === 'manager' && (
-          <div className="md:col-span-3 text-right text-xl font-bold text-green-700 mt-2 border-t pt-4">
+          <div className="flex flex-col">
+            <label className="text-sm text-gray-600 mb-1">ID касира</label>
+            <input
+              type="text"
+              placeholder="Наприклад, CSH001"
+              value={cashierId}
+              onChange={e => setCashierId(e.target.value)}
+              className="w-full border p-3 rounded-lg"
+            />
+          </div>
+        )}
+        <div className="flex flex-col">
+          <label className="text-sm text-gray-600 mb-1">Початкова дата (З):</label>
+          <input type="date" className="w-full border p-3 rounded-lg" value={startDate} onChange={e => setStartDate(e.target.value)} />
+        </div>
+        <div className="flex flex-col">
+          <label className="text-sm text-gray-600 mb-1">Кінцева дата (До):</label>
+          <input type="date" className="w-full border p-3 rounded-lg" value={endDate} onChange={e => setEndDate(e.target.value)} />
+        </div>
+        <div className="flex items-end">
+          <button onClick={() => { setStartDate(''); setEndDate(''); setCashierId(''); }} className="w-full bg-gray-200 p-3 rounded-lg hover:bg-gray-300 font-semibold">
+            Скинути фільтри
+          </button>
+        </div>
+        {user?.role === 'manager' && (
+          <div className="md:col-span-4 text-right text-xl font-bold text-green-700 mt-2 border-t pt-4">
             Загальна сума збуту за період: {totalSum.toFixed(2)} ₴
           </div>
         )}
       </div>
+
+      {loading && <div className="text-center py-4">Завантаження...</div>}
 
       <table className="w-full bg-white rounded shadow-sm text-left border-collapse">
         <thead className="bg-gray-100 border-b">
@@ -102,31 +114,28 @@ const ChecksList = () => {
           </tr>
         </thead>
         <tbody>
-          {filteredChecks.length > 0 ? (
-            filteredChecks.map(c => (
+          {checks.length > 0 ? (
+            checks.map(c => (
               <tr key={c.check_number} className="border-b hover:bg-gray-50">
                 <td className="p-3 font-mono text-sm">{c.check_number}</td>
                 <td className="p-3">{new Date(c.print_date).toLocaleString('uk-UA')}</td>
                 <td className="p-3">{c.id_employee}</td>
                 <td className="p-3 font-bold">{Number(c.sum_total).toFixed(2)}</td>
                 <td className="p-3 text-right space-x-2">
-                  <button onClick={() => openDetails(c.check_number)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200 transition">Деталі</button>
-                  {/* ВИЛУЧЕННЯ: ТІЛЬКИ МЕНЕДЖЕР */}
+                  <button onClick={() => openDetails(c.check_number)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200">Деталі</button>
                   {user?.role === 'manager' && (
-                    <button onClick={() => handleDelete(c.check_number)} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition">Видалити</button>
+                    <button onClick={() => handleDelete(c.check_number)} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Видалити</button>
                   )}
                 </td>
               </tr>
             ))
           ) : (
-            <tr>
-              <td colSpan="5" className="p-6 text-center text-gray-500">Чеків не знайдено за обраний період.</td>
-            </tr>
+            <tr><td colSpan="5" className="p-6 text-center text-gray-500">Чеків не знайдено за обраний період.</td></tr>
           )}
         </tbody>
       </table>
 
-      {/* ВІДНОВЛЕНЕ МОДАЛЬНЕ ВІКНО ДЕТАЛЕЙ */}
+      {/* Модальне вікно деталей (без змін) */}
       {selectedCheck && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
@@ -134,7 +143,6 @@ const ChecksList = () => {
               <h3 className="text-xl font-bold text-gray-800">Деталі чека #{selectedCheck}</h3>
               <button onClick={() => setSelectedCheck(null)} className="text-gray-500 hover:text-red-600 text-3xl leading-none">&times;</button>
             </div>
-            
             <div className="max-h-96 overflow-y-auto">
               <table className="w-full mb-4 text-left border-collapse">
                 <thead className="bg-gray-100 sticky top-0">
@@ -156,16 +164,13 @@ const ChecksList = () => {
                       </tr>
                     ))
                   ) : (
-                    <tr>
-                      <td colSpan="4" className="p-4 text-center text-gray-500">Завантаження товарів...</td>
-                    </tr>
+                    <tr><td colSpan="4" className="p-4 text-center text-gray-500">Завантаження товарів...</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
-
             <div className="flex justify-end mt-4 pt-4 border-t">
-              <button onClick={() => setSelectedCheck(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-semibold transition">
+              <button onClick={() => setSelectedCheck(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-semibold">
                 Закрити
               </button>
             </div>

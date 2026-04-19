@@ -11,10 +11,10 @@ export const apiService = {
       await delay(300);
       const { username, password } = credentials;
       if (username === 'manager' && password === '123') {
-        return { token: "fake_manager_jwt", user: { role: 'Manager', id: 'manager_1' } };
+        return { token: "fake_manager_jwt", user: { role: 'manager', id: 'manager_1' } };
       }
       if (username === 'cashier' && password === '123') {
-        return { token: "fake_cashier_jwt", user: { role: 'Cashier', id: 'cashier_1' } };
+        return { token: "fake_cashier_jwt", user: { role: 'cashier', id: 'cashier_1' } };
       }
       throw new Error("Невірний логін або пароль");
     }
@@ -28,13 +28,25 @@ export const apiService = {
     return res.data;
   },
 
-  // --- EMPLOYEES ---
-  getEmployees: async () => {
+  // --- EMPLOYEES (з серверним пошуком) ---
+  getEmployees: async (params = {}) => {
     if (USE_MOCK) {
       await delay(200);
-      return [...mockDb.mockEmployees];
+      let result = [...mockDb.mockEmployees];
+      if (params.search) {
+        result = result.filter(e =>
+          e.empl_surname.toLowerCase().includes(params.search.toLowerCase())
+        );
+      }
+      if (params.role) {
+        result = result.filter(e => e.empl_role === params.role);
+      }
+      return result;
     }
-    const res = await axiosClient.get('/employees/');
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.role) query.append('role', params.role);
+    const res = await axiosClient.get(`/employees/?${query.toString()}`);
     return res.data;
   },
 
@@ -71,13 +83,25 @@ export const apiService = {
     return (await axiosClient.put(`/employees/${id}`, data)).data;
   },
 
-  // --- PRODUCTS (довідник) ---
-  getProducts: async () => {
+  // --- PRODUCTS (довідник) з серверним пошуком ---
+  getProducts: async (params = {}) => {
     if (USE_MOCK) {
       await delay(200);
-      return [...mockDb.mockProducts];
+      let result = [...mockDb.mockProducts];
+      if (params.search) {
+        result = result.filter(p =>
+          p.product_name.toLowerCase().includes(params.search.toLowerCase())
+        );
+      }
+      if (params.category_id) {
+        result = result.filter(p => p.category_number === parseInt(params.category_id));
+      }
+      return result;
     }
-    const res = await axiosClient.get('/products/');
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.category_id) query.append('category_id', params.category_id);
+    const res = await axiosClient.get(`/products/?${query.toString()}`);
     return res.data;
   },
 
@@ -114,17 +138,39 @@ export const apiService = {
     return await axiosClient.delete(`/products/${id}`);
   },
 
-  // --- STORE PRODUCTS ---
-  getStoreProducts: async () => {
+  // --- STORE PRODUCTS з серверним пошуком ---
+  getStoreProducts: async (params = {}) => {
     if (USE_MOCK) {
       await delay(200);
-      return mockDb.mockStoreProducts.map(sp => {
+      let result = mockDb.mockStoreProducts.map(sp => {
         const prod = mockDb.mockProducts.find(p => p.id_product === sp.id_product);
         const cat = mockDb.mockCategories.find(c => c.category_number === prod?.category_number);
         return { ...sp, product_name: prod?.product_name, category_name: cat?.category_name };
       });
+      if (params.search) {
+        result = result.filter(sp =>
+          sp.upc.includes(params.search) ||
+          sp.product_name?.toLowerCase().includes(params.search.toLowerCase())
+        );
+      }
+      if (params.category_id) {
+        result = result.filter(sp => {
+          const prod = mockDb.mockProducts.find(p => p.id_product === sp.id_product);
+          return prod?.category_number === parseInt(params.category_id);
+        });
+      }
+      if (params.promotional !== undefined) {
+        result = result.filter(sp => sp.promotional_product === (params.promotional === 'true'));
+      }
+      return result;
     }
-    const res = await axiosClient.get('/store_products/');
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.category_id) query.append('category_id', params.category_id);
+    if (params.promotional !== undefined && params.promotional !== '') {
+      query.append('promotional', params.promotional);
+    }
+    const res = await axiosClient.get(`/store_products/?${query.toString()}`);
     return res.data;
   },
 
@@ -186,13 +232,26 @@ export const apiService = {
     return await axiosClient.delete(`/categories/${id}`);
   },
 
-  // --- CUSTOMERS ---
-  getCustomers: async () => {
+  // --- CUSTOMERS з серверним пошуком ---
+  getCustomers: async (params = {}) => {
     if (USE_MOCK) {
       await delay(200);
-      return [...mockDb.mockCustomers];
+      let result = [...mockDb.mockCustomers];
+      if (params.search) {
+        result = result.filter(c =>
+          c.cust_surname.toLowerCase().includes(params.search.toLowerCase()) ||
+          c.card_number.includes(params.search)
+        );
+      }
+      if (params.min_discount) {
+        result = result.filter(c => c.percent >= parseInt(params.min_discount));
+      }
+      return result;
     }
-    const res = await axiosClient.get('/customer_cards/');
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.min_discount) query.append('min_discount', params.min_discount);
+    const res = await axiosClient.get(`/customer_cards/?${query.toString()}`);
     return res.data;
   },
 
@@ -229,13 +288,29 @@ export const apiService = {
     return await axiosClient.delete(`/customer_cards/${id}`);
   },
 
-  // --- CHECKS ---
-  getChecks: async () => {
+  // --- CHECKS з серверною фільтрацією ---
+  getChecks: async (params = {}) => {
     if (USE_MOCK) {
       await delay(200);
-      return [...mockDb.mockChecks];
+      let result = [...mockDb.mockChecks];
+      if (params.cashier_id) {
+        result = result.filter(c => c.id_employee === params.cashier_id);
+      }
+      if (params.start_date) {
+        result = result.filter(c => new Date(c.print_date) >= new Date(params.start_date));
+      }
+      if (params.end_date) {
+        const end = new Date(params.end_date);
+        end.setDate(end.getDate() + 1);
+        result = result.filter(c => new Date(c.print_date) < end);
+      }
+      return result;
     }
-    const res = await axiosClient.get('/checks/');
+    const query = new URLSearchParams();
+    if (params.cashier_id) query.append('cashier_id', params.cashier_id);
+    if (params.start_date) query.append('start_date', params.start_date);
+    if (params.end_date) query.append('end_date', params.end_date);
+    const res = await axiosClient.get(`/checks/?${query.toString()}`);
     return res.data;
   },
 

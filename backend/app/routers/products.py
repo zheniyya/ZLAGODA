@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+from typing import List, Optional
 from app.schemas.base import ProductBase, ProductResponse
 from app.security.permissions import require_manager, get_current_user
 from app.database import get_db_connection, put_db_connection
@@ -20,12 +20,34 @@ def create_product(product: ProductBase, current_user: dict = Depends(require_ma
         put_db_connection(conn)
 
 @router.get("/", response_model=List[ProductResponse])
-def get_all_products(current_user: dict = Depends(get_current_user)):
+def get_all_products(
+        search: Optional[str] = None,
+        category_id: Optional[int] = None,
+        current_user: dict = Depends(get_current_user)
+):
+    """
+    Отримати всі товари.
+    Параметри фільтрації: search (по назві), category_id
+    """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM Product ORDER BY product_name")
-            return cur.fetchall()
+            conditions = []
+            params = []
+            
+            if search:
+                conditions.append("product_name ILIKE %s")
+                params.append(f"%{search}%")
+            if category_id is not None:
+                conditions.append("category_number = %s")
+                params.append(category_id)
+            
+            where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+            cur.execute(f"SELECT * FROM Product {where} ORDER BY product_name", params)
+            products = cur.fetchall()
+        return products
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Помилка завантаження товарів: {str(e)}")
     finally:
         put_db_connection(conn)
 

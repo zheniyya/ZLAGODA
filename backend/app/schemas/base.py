@@ -59,7 +59,6 @@ class ProductResponse(ProductBase):
 
 
 # --- STORE_PRODUCT ---
-# --- STORE_PRODUCT ---
 class StoreProductBase(BaseModel):
     upc: str = Field(..., max_length=12)
     upc_prom: Optional[str] = Field(None, max_length=12)
@@ -69,7 +68,10 @@ class StoreProductBase(BaseModel):
     promotional_product: bool
 
 class StoreProductResponse(StoreProductBase):
-    pass
+    # Додаткові поля, що повертаються з запиту (JOIN з Product та Category)
+    product_name: Optional[str] = Field(None, max_length=50)
+    characteristics: Optional[str] = Field(None, max_length=100)
+    category_name: Optional[str] = Field(None, max_length=50)
 
 class StoreProductCreate(StoreProductBase):
     pass
