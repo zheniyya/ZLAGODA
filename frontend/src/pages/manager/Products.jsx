@@ -152,20 +152,53 @@ const Products = () => {
     }
   };
 
-  const handleProductSelect = (e) => {
-    const selectedIdProduct = Number(e.target.value);
-    const existingRegular = storeProducts.find(
-      sp => sp.id_product === selectedIdProduct && !sp.promotional_product
-    );
-    const existingPromo = storeProducts.find(
-      sp => sp.id_product === selectedIdProduct && sp.promotional_product
-    );
-    let oldPrice = '';
-    if (existingRegular) oldPrice = existingRegular.selling_price;
-    else if (existingPromo) oldPrice = (existingPromo.selling_price / 0.8).toFixed(2);
+  // --- Updated Checkbox Handler ---
+const handlePromoToggle = (e) => {
+  const isPromo = e.target.checked;
+  let newPrice = formData.selling_price;
 
-    setFormData({ ...formData, id_product: selectedIdProduct, selling_price: oldPrice });
-  };
+  if (isPromo && formData.id_product) {
+    const existingRegular = storeProducts.find(
+      (sp) => sp.id_product === formData.id_product && !sp.promotional_product
+    );
+    if (existingRegular) {
+      // Auto-calculate the 80% price
+      newPrice = (parseFloat(existingRegular.selling_price) * 0.8).toFixed(2);
+    } else {
+      setErrorMsg("Спочатку додайте звичайний товар, щоб створити акційний.");
+      return; // Prevent checking the box if no regular product exists
+    }
+  }
+
+  setFormData({ 
+    ...formData, 
+    promotional_product: isPromo, 
+    selling_price: newPrice 
+  });
+};
+
+// --- Updated Product Select Handler ---
+const handleProductSelect = (e) => {
+  const selectedIdProduct = Number(e.target.value);
+  const existingRegular = storeProducts.find(
+    (sp) => sp.id_product === selectedIdProduct && !sp.promotional_product
+  );
+
+  let newPrice = '';
+  if (formData.promotional_product) {
+      if (existingRegular) {
+          newPrice = (parseFloat(existingRegular.selling_price) * 0.8).toFixed(2);
+      }
+  } else if (existingRegular) {
+      newPrice = existingRegular.selling_price;
+  }
+
+  setFormData({ 
+    ...formData, 
+    id_product: selectedIdProduct, 
+    selling_price: newPrice 
+  });
+};
 
   const isManager = user?.role?.toLowerCase() === 'manager';
 
@@ -396,10 +429,16 @@ const Products = () => {
                   step="0.01"
                   min="0.01"
                   placeholder="0.00"
-                  className="w-full border p-3 rounded-lg"
+                  className={`w-full border p-3 rounded-lg ${formData.promotional_product ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                   value={formData.selling_price || ''}
                   onChange={e => setFormData({ ...formData, selling_price: parseFloat(e.target.value) })}
+                  disabled={formData.promotional_product} // Lock the input if it's on sale
                 />
+                {formData.promotional_product && (
+                  <span className="text-xs text-blue-600 mt-1 block">
+                    *Ціна автоматично розрахована (знижка 20%)
+                  </span>
+                )}
               </div>
 
               <div>
@@ -420,7 +459,8 @@ const Products = () => {
                   type="checkbox"
                   className="w-5 h-5"
                   checked={formData.promotional_product || false}
-                  onChange={e => setFormData({ ...formData, promotional_product: e.target.checked })}
+                  onChange={handlePromoToggle}
+                  disabled={!!editingItem} // Prevent changing product type during an edit
                 />
                 <span className="font-semibold text-gray-700">Акційний товар (знижка 20%)</span>
               </label>

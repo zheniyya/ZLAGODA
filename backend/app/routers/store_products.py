@@ -20,37 +20,100 @@ def generate_unique_upc(cur):
         if not cur.fetchone():
             return new_upc # It's unique, return it
 
-# Your POST endpoint
 @router.post("/", response_model=StoreProductResponse, status_code=status.HTTP_201_CREATED)
-def create_store_product(sp: StoreProductCreate, current_user: dict = Depends(require_manager)):
+def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = Depends(require_manager)):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Generate the unique UPC on the server
-            upc = generate_unique_upc(cur)
-            
-            # 2. Insert into the database
+            # Check if this exact type of store product (promo or regular) already exists
             cur.execute("""
-                INSERT INTO Store_Product 
-                (upc, upc_prom, id_product, selling_price, products_number, promotional_product) 
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
-            """, (
-                upc, 
-                None, # upc_prom defaults to None for new products
-                sp.id_product, 
-                sp.selling_price, 
-                sp.products_number, 
-                sp.promotional_product
-            ))
-            new_store_product = cur.fetchone()
+                SELECT upc, products_number, selling_price 
+                FROM Store_Product 
+                WHERE id_product = %s AND promotional_product = %s
+            """, (sp.id_product, sp.promotional_product))
+            existing_product = cur.fetchone()
+
+            if not sp.promotional_product:
+                # ==========================================
+                # SCENARIO A: HANDLING REGULAR PRODUCTS
+                # ==========================================
+                if existing_product:
+                    # 1. Product exists: Add quantities, update to the new price
+                    new_qty = existing_product['products_number'] + sp.products_number
+                    
+                    cur.execute("""
+                        UPDATE Store_Product 
+                        SET selling_price = %s, products_number = %s 
+                        WHERE upc = %s RETURNING *
+                    """, (sp.selling_price, new_qty, existing_product['upc']))
+                    saved_product = cur.fetchone()
+
+                    # 2. Revaluate the promo product if it exists!
+                    promo_price = round(float(sp.selling_price) * 0.8, 2)
+                    cur.execute("""
+                        UPDATE Store_Product 
+                        SET selling_price = %s 
+                        WHERE id_product = %s AND promotional_product = TRUE
+                    """, (promo_price, sp.id_product))
+                else:
+                    # Product doesn't exist: Standard Insert
+                    upc = generate_unique_upc(cur)
+                    cur.execute("""
+                        INSERT INTO Store_Product 
+                        (upc, id_product, selling_price, products_number, promotional_product) 
+                        VALUES (%s, %s, %s, %s, FALSE) RETURNING *
+                    """, (upc, sp.id_product, sp.selling_price, sp.products_number))
+                    saved_product = cur.fetchone()
+
+            else:
+                # ==========================================
+                # SCENARIO B: HANDLING PROMOTIONAL PRODUCTS
+                # ==========================================
+                # 1. Find the base regular product to get the true price
+                cur.execute("""
+                    SELECT upc, selling_price FROM Store_Product 
+                    WHERE id_product = %s AND promotional_product = FALSE
+                """, (sp.id_product,))
+                base_product = cur.fetchone()
+
+                if not base_product:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="Неможливо створити акційний товар без існуючого звичайного товару."
+                    )
+
+                # Force the 80% calculation, ignoring the user input
+                calculated_promo_price = round(float(base_product['selling_price']) * 0.8, 2)
+
+                if existing_product:
+                    # Promo exists: Just add the quantities
+                    new_qty = existing_product['products_number'] + sp.products_number
+                    cur.execute("""
+                        UPDATE Store_Product 
+                        SET products_number = %s, selling_price = %s 
+                        WHERE upc = %s RETURNING *
+                    """, (new_qty, calculated_promo_price, existing_product['upc']))
+                    saved_product = cur.fetchone()
+                else:
+                    # Insert new promo linked to the regular product
+                    upc = generate_unique_upc(cur)
+                    cur.execute("""
+                        INSERT INTO Store_Product 
+                        (upc, upc_prom, id_product, selling_price, products_number, promotional_product) 
+                        VALUES (%s, %s, %s, %s, %s, TRUE) RETURNING *
+                    """, (upc, base_product['upc'], sp.id_product, calculated_promo_price, sp.products_number))
+                    saved_product = cur.fetchone()
+
             conn.commit()
-            return new_store_product
+            return saved_product
+
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         put_db_connection(conn)
-
 
 @router.get("/", response_model=List[StoreProductResponse])
 def get_all_store_products(
@@ -124,76 +187,88 @@ def get_store_product(UPC: str, current_user: dict = Depends(get_current_user)):
     finally:
         put_db_connection(conn)
 
-
 @router.put("/{UPC}", response_model=StoreProductResponse)
 def update_store_product(UPC: str, sp: StoreProductBase, current_user: dict = Depends(require_manager)):
     """
-    Оновлення товару в магазині.
-    ВИПРАВЛЕННЯ №2: При зміні ціни звичайного товару — автоматично оновлюється
-    акційний (ціна * 0.8), і навпаки — якщо оновлюється акційний, перевіряємо
-    що ціна не перевищує 80% від базової.
+    Оновлення товару в магазині. 
+    Жорстко контролює зміну цін та кількості згідно з правилом 20% знижки.
     """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Отримуємо поточний запис
+            # 1. Fetch the existing product to see what we are dealing with
             cur.execute("SELECT * FROM Store_Product WHERE upc = %s", (UPC,))
             current = cur.fetchone()
             if not current:
                 raise HTTPException(status_code=404, detail="Товар в магазині не знайдено")
 
-            # --- ДОДАНО: Заборона змінювати акційний на звичайний, якщо вже є звичайний ---
-            if not sp.promotional_product:
-                cur.execute(
-                    "SELECT upc FROM Store_Product WHERE id_product = %s AND promotional_product = FALSE AND upc != %s",
-                    (sp.id_product, UPC)
+            # 2. Prevent changing a regular product to promotional (or vice versa) during an edit.
+            # If they want a promo, they should create a new one to generate a new UPC.
+            if current['promotional_product'] != sp.promotional_product:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Неможливо змінити тип (звичайний/акційний) існуючого товару. Додайте нову партію."
                 )
-                if cur.fetchone():
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Для цього товару вже існує звичайна версія. Ви можете додати лише акційну версію (зі знижкою 20%)"
-                    )
 
-            cur.execute("""
-                UPDATE Store_Product SET
-                    id_product = %s,
-                    selling_price = %s,
-                    products_number = %s,
-                    promotional_product = %s
-                WHERE upc = %s RETURNING *
-            """, (sp.id_product, sp.selling_price, sp.products_number, sp.promotional_product, UPC))
-            updated = cur.fetchone()
+            if not current['promotional_product']:
+                # ==========================================
+                # SCENARIO A: EDITING A REGULAR PRODUCT
+                # ==========================================
+                # Update the regular product with whatever the user entered
+                cur.execute("""
+                    UPDATE Store_Product SET
+                        id_product = %s,
+                        selling_price = %s,
+                        products_number = %s
+                    WHERE upc = %s RETURNING *
+                """, (sp.id_product, sp.selling_price, sp.products_number, UPC))
+                updated = cur.fetchone()
 
-            # ВИПРАВЛЕННЯ №2: Переоцінка пов'язаного товару
-            if not current["promotional_product"]:
-                # Оновлюємо звичайний товар → автоматично перераховуємо акційний (80% від нової ціни)
+                # CRITICAL: Automatically recalculate and update the linked promo product!
                 promo_price = round(float(sp.selling_price) * 0.8, 2)
                 cur.execute("""
                     UPDATE Store_Product
                     SET selling_price = %s
                     WHERE id_product = %s AND promotional_product = TRUE
                 """, (promo_price, sp.id_product))
+            
             else:
-                # Оновлюємо акційний товар → перевіряємо що ціна ≤ 80% від базової
+                # ==========================================
+                # SCENARIO B: EDITING A PROMOTIONAL PRODUCT
+                # ==========================================
+                # First, find the base product to get the true price
                 cur.execute("""
                     SELECT selling_price FROM Store_Product
                     WHERE id_product = %s AND promotional_product = FALSE
                 """, (sp.id_product,))
                 base = cur.fetchone()
-                if base:
-                    max_promo_price = round(float(base["selling_price"]) * 0.8, 2)
-                    if float(sp.selling_price) > max_promo_price:
-                        conn.rollback()
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"Акційна ціна не може бути більшою за {max_promo_price} ₴ (80% від базової)"
-                        )
+                
+                if not base:
+                    raise HTTPException(status_code=400, detail="Відсутній базовий товар для розрахунку акційної ціни.")
+
+                # Forcefully calculate the 80% price, ignoring whatever the frontend sent
+                calculated_promo_price = round(float(base["selling_price"]) * 0.8, 2)
+
+                # Update the promo product
+                cur.execute("""
+                    UPDATE Store_Product SET
+                        id_product = %s,
+                        selling_price = %s,
+                        products_number = %s
+                    WHERE upc = %s RETURNING *
+                """, (sp.id_product, calculated_promo_price, sp.products_number, UPC))
+                updated = cur.fetchone()
 
             conn.commit()
             return updated
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Помилка оновлення: {str(e)}")
     finally:
         put_db_connection(conn)
-
 
 @router.delete("/{UPC}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_store_product(UPC: str, current_user: dict = Depends(require_manager)):
