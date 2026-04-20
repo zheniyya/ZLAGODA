@@ -56,7 +56,7 @@ def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = 
                         WHERE id_product = %s AND promotional_product = TRUE
                     """, (promo_price, sp.id_product))
                 else:
-                    # Product doesn't exist: Standard Insert
+                    # 1. Product doesn't exist: Standard Insert for the new regular batch
                     upc = generate_unique_upc(cur)
                     cur.execute("""
                         INSERT INTO Store_Product 
@@ -64,6 +64,15 @@ def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = 
                         VALUES (%s, %s, %s, %s, FALSE) RETURNING *
                     """, (upc, sp.id_product, sp.selling_price, sp.products_number))
                     saved_product = cur.fetchone()
+
+                    # 2. THE FIX: If there is a leftover promo product on the shelves, 
+                    # we MUST forcefully update its price to match the new regular product's price!
+                    promo_price = round(float(sp.selling_price) * 0.8, 2)
+                    cur.execute("""
+                        UPDATE Store_Product 
+                        SET selling_price = %s 
+                        WHERE id_product = %s AND promotional_product = TRUE
+                    """, (promo_price, sp.id_product))
 
             else:
                 # ==========================================
