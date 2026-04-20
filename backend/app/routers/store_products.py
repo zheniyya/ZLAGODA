@@ -1,6 +1,7 @@
+from random import randint
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
-from app.schemas.base import StoreProductBase, StoreProductResponse
+from app.schemas.base import StoreProductBase, StoreProductResponse, StoreProductCreate
 from app.security.permissions import require_manager, get_current_user
 from app.database import get_db_connection, put_db_connection
 import uuid
@@ -8,60 +9,45 @@ import uuid
 router = APIRouter(prefix="/store_products", tags=["StoreProducts"])
 
 
+# Helper function to guarantee a unique UPC
+def generate_unique_upc(cur):
+    while True:
+        # Generate a random 12-digit string
+        new_upc = str(randint(100000000000, 999999999999))
+        
+        # Check if it already exists
+        cur.execute("SELECT upc FROM Store_Product WHERE upc = %s", (new_upc,))
+        if not cur.fetchone():
+            return new_upc # It's unique, return it
+
+# Your POST endpoint
 @router.post("/", response_model=StoreProductResponse, status_code=status.HTTP_201_CREATED)
-def create_store_product(sp: StoreProductBase, current_user: dict = Depends(require_manager)):
-    """
-    Створення нового товару в магазині.
-    ВИПРАВЛЕННЯ №3: Перевірка обмеження — не більше 2-х Store_Product на один Product
-    (один звичайний + один акційний).
-    """
-    UPC = str(uuid.uuid4())[:12]
+def create_store_product(sp: StoreProductCreate, current_user: dict = Depends(require_manager)):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Перевіряємо кількість існуючих записів для цього продукту
-            cur.execute(
-                "SELECT COUNT(*) AS cnt FROM Store_Product WHERE id_product = %s",
-                (sp.id_product,)
-            )
-            result = cur.fetchone()
-            if result["cnt"] >= 2:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Для одного продукту може бути не більше 2-х позицій у магазині (звичайна та акційнa)"
-                )
-
-            # Якщо це звичайний товар — перевіряємо що вже не існує інший звичайний
-            if not sp.promotional_product:
-                cur.execute(
-                    "SELECT upc FROM Store_Product WHERE id_product = %s AND promotional_product = FALSE",
-                    (sp.id_product,)
-                )
-                if cur.fetchone():
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Для цього товару вже існує звичайна версія. Ви можете додати лише акційну версію (зі знижкою 20%)"
-                    )
-
-            # Якщо це акційний товар — перевіряємо що вже є звичайний
-            if sp.promotional_product:
-                cur.execute(
-                    "SELECT upc FROM Store_Product WHERE id_product = %s AND promotional_product = FALSE",
-                    (sp.id_product,)
-                )
-                if not cur.fetchone():
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Спочатку додайте звичайну (не акційну) версію цього товару"
-                    )
-
+            # 1. Generate the unique UPC on the server
+            upc = generate_unique_upc(cur)
+            
+            # 2. Insert into the database
             cur.execute("""
-                INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, promotional_product)
-                VALUES (%s, NULL, %s, %s, %s, %s) RETURNING *
-            """, (UPC, sp.id_product, sp.selling_price, sp.products_number, sp.promotional_product))
-            new_sp = cur.fetchone()
+                INSERT INTO Store_Product 
+                (upc, upc_prom, id_product, selling_price, products_number, promotional_product) 
+                VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
+            """, (
+                upc, 
+                None, # upc_prom defaults to None for new products
+                sp.id_product, 
+                sp.selling_price, 
+                sp.products_number, 
+                sp.promotional_product
+            ))
+            new_store_product = cur.fetchone()
             conn.commit()
-            return new_sp
+            return new_store_product
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         put_db_connection(conn)
 

@@ -1,28 +1,53 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
-from app.schemas.base import EmployeeCreate, EmployeeResponse
+from app.schemas.base import EmployeeCreate, EmployeeResponse, EmployeeCreateResponse
 from app.security.permissions import require_manager, get_current_user
 from app.security.hashing import get_password_hash
 from app.database import get_db_connection, put_db_connection
+import secrets
+import string
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
-
-@router.post("/", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
+# UPDATE THIS LINE: change response_model to EmployeeCreateWithPasswordResponse
+@router.post("/", response_model=EmployeeCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_employee(employee: EmployeeCreate, current_user: dict = Depends(require_manager)):
     conn = get_db_connection()
     try:
-        hashed_password = get_password_hash(employee.password)
+        # 1. Generate a secure 8-character random password
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+        raw_password = ''.join(secrets.choice(alphabet) for i in range(8))
+        hashed_password = get_password_hash(raw_password)
+
         with conn.cursor() as cur:
+            # 2. Determine the prefix based on the role
+            prefix = "MGR" if employee.empl_role.lower() == "manager" else "CSH"
+            
+            # 3. Find the highest existing ID with this prefix
+            cur.execute(
+                "SELECT id_employee FROM Employee WHERE id_employee LIKE %s ORDER BY id_employee DESC LIMIT 1", 
+                (f"{prefix}%",)
+            )
+            last_id_record = cur.fetchone()
+            
+            # 4. Generate the new ID
+            if last_id_record and last_id_record["id_employee"]:
+                last_id = last_id_record["id_employee"]
+                numeric_part = int(last_id[len(prefix):])
+                new_id = f"{prefix}{numeric_part + 1:03d}"
+            else:
+                new_id = f"{prefix}001"
+
+            # 5. Insert into Database
             cur.execute("""
                 INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, 
                     empl_role, salary, date_of_birth, date_of_start, phone_number, city, street, zip_code, password_hash)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
             """, (
-                employee.id_employee,
+                new_id, 
                 employee.empl_surname,
                 employee.empl_name,
-                employee.empl_patronymic,
+                getattr(employee, "empl_patronymic", None),
                 employee.empl_role,
                 employee.salary,
                 employee.date_of_birth,
@@ -33,9 +58,52 @@ def create_employee(employee: EmployeeCreate, current_user: dict = Depends(requi
                 employee.zip_code,
                 hashed_password
             ))
-            new_employee = cur.fetchone()
+            
+            new_employee = dict(cur.fetchone())
             conn.commit()
+            
+            # This will now successfully pass through Pydantic!
+            new_employee["generated_password"] = raw_password 
+            
             return new_employee
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        put_db_connection(conn)
+
+
+@router.put("/{id_employee}", response_model=EmployeeResponse)
+def update_employee(id_employee: str, employee: EmployeeCreate, current_user: dict = Depends(require_manager)):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Notice we removed the password hashing and updating from here
+            cur.execute("""
+                UPDATE Employee SET 
+                    empl_surname = %s, empl_name = %s, empl_patronymic = %s, 
+                    empl_role = %s, salary = %s, date_of_birth = %s, date_of_start = %s, 
+                    phone_number = %s, city = %s, street = %s, zip_code = %s
+                WHERE id_employee = %s RETURNING *
+            """, (
+                employee.empl_surname,
+                employee.empl_name,
+                getattr(employee, "empl_patronymic", None),
+                employee.empl_role,
+                employee.salary,
+                employee.date_of_birth,
+                employee.date_of_start,
+                employee.phone_number,
+                employee.city,
+                employee.street,
+                employee.zip_code,
+                id_employee
+            ))
+            updated_emp = cur.fetchone()
+            if not updated_emp:
+                raise HTTPException(status_code=404, detail="Працівника не знайдено")
+            conn.commit()
+            return updated_emp
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -91,45 +159,6 @@ def get_employee(id_employee: str, current_user: dict = Depends(get_current_user
             if not employee:
                 raise HTTPException(status_code=404, detail="Працівника не знайдено")
             return employee
-    finally:
-        put_db_connection(conn)
-
-
-@router.put("/{id_employee}", response_model=EmployeeResponse)
-def update_employee(id_employee: str, employee: EmployeeCreate, current_user: dict = Depends(require_manager)):
-    conn = get_db_connection()
-    try:
-        hashed_password = get_password_hash(employee.password)
-        with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE Employee SET 
-                    empl_surname = %s, empl_name = %s, empl_patronymic = %s, 
-                    empl_role = %s, salary = %s, date_of_birth = %s, date_of_start = %s, 
-                    phone_number = %s, city = %s, street = %s, zip_code = %s, password_hash = %s
-                WHERE id_employee = %s RETURNING *
-            """, (
-                employee.empl_surname,
-                employee.empl_name,
-                employee.empl_patronymic,
-                employee.empl_role,
-                employee.salary,
-                employee.date_of_birth,
-                employee.date_of_start,
-                employee.phone_number,
-                employee.city,
-                employee.street,
-                employee.zip_code,
-                hashed_password,
-                id_employee
-            ))
-            updated_emp = cur.fetchone()
-            if not updated_emp:
-                raise HTTPException(status_code=404, detail="Працівника не знайдено")
-            conn.commit()
-            return updated_emp
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
     finally:
         put_db_connection(conn)
 

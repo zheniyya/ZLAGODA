@@ -3,11 +3,6 @@ import { AuthContext } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
 import debounce from 'lodash/debounce';
 
-// Генерація UPC на фронтенді (12 цифр)
-const generateUPC = () => {
-  return Math.floor(100000000000 + Math.random() * 900000000000).toString();
-};
-
 const Products = () => {
   const { user } = useContext(AuthContext);
 
@@ -84,16 +79,20 @@ const Products = () => {
     setErrorMsg('');
     try {
       if (editingItem) {
+        // UPDATE (UPC already exists, so we just pass the ID in the URL and update fields)
         await apiService.updateStoreProduct(editingItem.upc, {
-          ...formData,
-          upc: editingItem.upc,
+          id_product: formData.id_product,
+          selling_price: formData.selling_price,
+          products_number: formData.products_number,
+          promotional_product: formData.promotional_product || false
         });
       } else {
-        const upc = formData.upc || generateUPC();
+        // CREATE (Backend handles the UPC generation entirely)
         await apiService.createStoreProduct({
-          ...formData,
-          upc,
-          upc_prom: null,
+          id_product: formData.id_product,
+          selling_price: formData.selling_price,
+          products_number: formData.products_number,
+          promotional_product: formData.promotional_product || false
         });
       }
       setIsStoreProductModalOpen(false);
@@ -443,6 +442,10 @@ const Products = () => {
             {errorMsg && <div className="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">{errorMsg}</div>}
             <form onSubmit={saveProduct} className="space-y-4">
               <input required placeholder="Назва товару" className="w-full border p-3 rounded-lg" value={formData.product_name || ''} onChange={e => setFormData({ ...formData, product_name: e.target.value })} />
+              
+              {/* NEW INPUT FIELD FOR MANUFACTURER */}
+              <input required placeholder="Виробник" className="w-full border p-3 rounded-lg" value={formData.manufacturer || ''} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} />
+              
               <select required className="w-full border p-3 rounded-lg" value={formData.category_number || ''} onChange={e => setFormData({ ...formData, category_number: Number(e.target.value) })}>
                 <option value="" disabled>Оберіть категорію...</option>
                 {categories.map(c => <option key={c.category_number} value={c.category_number}>{c.category_name}</option>)}

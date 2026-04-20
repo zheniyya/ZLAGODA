@@ -4,6 +4,7 @@ from datetime import date
 from app.security.permissions import require_manager
 from app.database import get_db_connection, put_db_connection
 from app.services.report_service import generate_pdf_report
+from typing import Optional, List, Any
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -155,7 +156,7 @@ def report_store_products(
             cur.execute(f"""
                 SELECT sp.upc, p.product_name, sp.selling_price,
                        sp.products_number, sp.promotional_product
-                FROM "Store_Product" sp
+                FROM "store_product" sp
                 JOIN Product p ON sp.id_product = p.id_product
                 {where}
                 ORDER BY p.product_name
@@ -236,7 +237,7 @@ def report_cashier_summary(
     try:
         with conn.cursor() as cur:
             conditions = ["LOWER(c.id_employee) = LOWER(%s)"]
-            params = [cashier_id]
+            params: List[Any] = [cashier_id]
             if start_date:
                 conditions.append("c.print_date >= %s")
                 params.append(start_date)

@@ -5,7 +5,7 @@ from decimal import Decimal
 
 # --- EMPLOYEE ---
 class EmployeeBase(BaseModel):
-    id_employee: str = Field(..., max_length=10)
+    #id_employee: str = Field(..., max_length=10)
     empl_surname: str = Field(..., max_length=50)
     empl_name: str = Field(..., max_length=50)
     empl_patronymic: Optional[str] = Field(None, max_length=50)
@@ -28,10 +28,27 @@ class EmployeeBase(BaseModel):
         return v
 
 class EmployeeCreate(EmployeeBase):
-    password: str = Field(..., min_length=4, description="Пароль для входу")
+    pass
 
 class EmployeeResponse(EmployeeBase):
-    pass
+    id_employee: str
+    class Config:
+        orm_mode = True
+
+# This is what to return ONLY when creating a new employee
+class EmployeeCreateResponse(BaseModel):
+    id_employee: str
+    empl_name: str
+    empl_surname: str
+    empl_role: str
+    salary: float
+    date_of_birth: date
+    date_of_start: date
+    phone_number: str = Field(..., max_length=13)
+    city: str = Field(..., max_length=50)
+    street: str = Field(..., max_length=50)
+    zip_code: str = Field(..., max_length=9)
+    generated_password: str
 
 
 # --- CATEGORY ---
@@ -49,6 +66,7 @@ class CategoryResponse(CategoryBase):
 class ProductBase(BaseModel):
     category_number: int
     product_name: str = Field(..., max_length=50)
+    manufacturer: str = Field(..., max_length=50)
     characteristics: str = Field(..., max_length=100)
 
 class ProductCreate(ProductBase):
@@ -60,21 +78,24 @@ class ProductResponse(ProductBase):
 
 # --- STORE_PRODUCT ---
 class StoreProductBase(BaseModel):
-    upc: str = Field(..., max_length=12)
-    upc_prom: Optional[str] = Field(None, max_length=12)
     id_product: int
     selling_price: Decimal = Field(..., ge=0)
     products_number: int = Field(..., ge=0)
     promotional_product: bool
 
+# The frontend will send exactly this (no UPC):
+class StoreProductCreate(StoreProductBase):
+    pass 
+
+# The backend will respond with this (including the generated UPC):
 class StoreProductResponse(StoreProductBase):
-    # Додаткові поля, що повертаються з запиту (JOIN з Product та Category)
+    upc: str = Field(..., max_length=12)
+    upc_prom: Optional[str] = Field(None, max_length=12)
+    
+    # Optional join fields
     product_name: Optional[str] = Field(None, max_length=50)
     characteristics: Optional[str] = Field(None, max_length=100)
     category_name: Optional[str] = Field(None, max_length=50)
-
-class StoreProductCreate(StoreProductBase):
-    pass
 
 
 
@@ -90,6 +111,13 @@ class CustomerCardBase(BaseModel):
     street: Optional[str] = Field(None, max_length=50)
     zip_code: Optional[str] = Field(None, max_length=9)
     percent: int = Field(..., ge=0)
+
+class CustomerCreate(BaseModel):
+    cust_surname: str
+    cust_name: str
+    cust_patronymic: Optional[str] = None
+    phone_number: str
+    percent: int
 
 class CustomerCardCreate(CustomerCardBase):
     pass

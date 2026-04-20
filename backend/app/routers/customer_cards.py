@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
-from app.schemas.base import CustomerCardBase, CustomerCardResponse
+from app.schemas.base import CustomerCardBase, CustomerCardResponse, CustomerCreate
 from app.security.permissions import require_manager, get_current_user
 from app.database import get_db_connection, put_db_connection
 import uuid
@@ -8,19 +8,45 @@ import uuid
 router = APIRouter(prefix="/customer_cards", tags=["CustomerCards"])
 
 @router.post("/", response_model=CustomerCardResponse, status_code=status.HTTP_201_CREATED)
-def create_customer_card(customer_card: CustomerCardBase, current_user: dict = Depends(get_current_user)):
-    card_number = str(uuid.uuid4())[:13]
+def create_customer_card(customer: CustomerCreate, current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
+            # 1. Find the highest existing card number
+            cur.execute("SELECT card_number FROM Customer_Card ORDER BY card_number DESC LIMIT 1")
+            last_card_record = cur.fetchone()
+            
+            # 2. Generate the new card number
+            if last_card_record and last_card_record["card_number"]:
+                last_card = last_card_record["card_number"]
+                # Slice off "CARD" (first 4 chars) and convert the rest to an integer
+                numeric_part = int(last_card[4:])
+                # Format: "CARD" + 9 digits with leading zeros
+                new_card_number = f"CARD{numeric_part + 1:09d}"
+            else:
+                # If the table is completely empty
+                new_card_number = "CARD000000001"
+
+            # 3. Insert into Database
             cur.execute("""
-                INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
-            """, (card_number, customer_card.cust_surname, customer_card.cust_name, customer_card.cust_patronymic,
-                  customer_card.phone_number, customer_card.city, customer_card.street, customer_card.zip_code, customer_card.percent))
-            new_card = cur.fetchone()
+                INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, percent)
+                VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
+            """, (
+                new_card_number, 
+                customer.cust_surname,
+                customer.cust_name,
+                getattr(customer, "cust_patronymic", None),
+                customer.phone_number,
+                customer.percent
+            ))
+            
+            new_customer = cur.fetchone()
             conn.commit()
-            return new_card
+            return new_customer
+            
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
     finally:
         put_db_connection(conn)
 
