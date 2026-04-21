@@ -9,28 +9,31 @@ const Stats = () => {
   // Дані для звітів
   const [customerData, setCustomerData] = useState([]);
   const [salesData, setSalesData] = useState([]);
-  const [promoData, setPromoData] = useState([]);
+  const [allPromoSoldData, setAllPromoSoldData] = useState([]);
   const [notSoldData, setNotSoldData] = useState([]);
+
+  // Параметри
   const [daysParam, setDaysParam] = useState(30);
 
   // Стейти для працівників
   const [employeesList, setEmployeesList] = useState([]); // Список працівників для dropdown
   const [employeeSalesData, setEmployeeSalesData] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
+  const [minPercentParam, setMinPercentParam] = useState(10);
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
       if (activeTab === 'customers') {
-        const data = await apiService.getCustomerSummary();
+        const data = await apiService.getCustomerSummary(minPercentParam);
         setCustomerData(data);
       } else if (activeTab === 'sales') {
         const data = await apiService.getSalesByCategoryMonth();
         setSalesData(data);
-      } else if (activeTab === 'promo') {
-        const data = await apiService.getPromoNeverSold();
-        setPromoData(data);
+      } else if (activeTab === 'allPromoSold') {
+        const data = await apiService.getCategoriesAllPromoSold();
+        setAllPromoSoldData(data);
       } else if (activeTab === 'notsold') {
         const data = await apiService.getNotSoldForDays(daysParam);
         setNotSoldData(data);
@@ -61,7 +64,7 @@ const Stats = () => {
     loadData();
     // Додаємо employeeId в залежності, щоб дані оновлювались одразу при виборі зі списку
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, daysParam, employeeId]);
+  }, [activeTab, daysParam, employeeId, minPercentParam]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('uk-UA', {
@@ -98,9 +101,9 @@ const Stats = () => {
       {/* Вкладки */}
       <div className="flex border-b mb-6 bg-white rounded-t-lg shadow-sm overflow-x-auto">
         {[
-          { key: 'customers', label: '👥 Клієнти (витрати/економія)' },
+          { key: 'customers', label: '💳 Продажі за знижкою клієнтів' },
           { key: 'sales', label: '📈 Продажі за категоріями' },
-          { key: 'promo', label: '🏷️ Непродані акційні товари' },
+          { key: 'allPromoSold', label: '🏷️ Категорії з усіма акційними проданими' },
           { key: 'notsold', label: '📦 Не продавались N днів' },
           { key: 'employee', label: '👤 Продажі працівника' }
         ].map(tab => (
@@ -121,38 +124,50 @@ const Stats = () => {
       {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-4">{error}</div>}
       {loading && <div className="text-center py-8 text-gray-500">Завантаження...</div>}
 
-      {/* Вкладка 1: Звіт по клієнтах */}
+      {/* Вкладка 1: Продажі за знижкою клієнтів */}
       {activeTab === 'customers' && !loading && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {/* ... Код таблиці клієнтів (залишається без змін) ... */}
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Картка</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Клієнт</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Чеків</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Сплачено (зі знижкою)</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Без знижки</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Економія</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {customerData.length > 0 ? (
-                customerData.map(c => (
-                  <tr key={c.card_number} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-mono">{c.card_number}</td>
-                    <td className="px-6 py-4 text-sm">{c.cust_surname} {c.cust_name}</td>
-                    <td className="px-6 py-4 text-sm text-center">{c.total_checks}</td>
-                    <td className="px-6 py-4 text-sm text-right font-medium">{formatCurrency(c.total_spent_with_discount)}</td>
-                    <td className="px-6 py-4 text-sm text-right text-gray-500">{formatCurrency(c.total_without_discount)}</td>
-                    <td className="px-6 py-4 text-sm text-right font-semibold text-green-600">{formatCurrency(c.total_saved)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Немає даних</td></tr>
-              )}
-            </tbody>
-          </table>
+        <div>
+          <div className="mb-4 flex items-center space-x-4 bg-white p-4 rounded-lg shadow-sm">
+            <label className="text-sm font-medium">Мінімальний відсоток знижки:</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={minPercentParam}
+              onChange={(e) => setMinPercentParam(parseInt(e.target.value) || 0)}
+              className="w-24 border rounded px-3 py-1"
+            />
+            <button
+              onClick={loadData}
+              className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700"
+            >
+              Оновити
+            </button>
+          </div>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Категорія</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Унікальних клієнтів</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Сума продажів</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {customerData.length > 0 ? (
+                  customerData.map(item => (
+                    <tr key={item.category_name} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium">{item.category_name}</td>
+                      <td className="px-6 py-4 text-sm text-center">{item.unique_customers}</td>
+                      <td className="px-6 py-4 text-sm text-right font-semibold">{formatCurrency(item.total_sales_amount)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500">Немає даних</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -185,34 +200,33 @@ const Stats = () => {
         </div>
       )}
 
-      {/* Вкладка 3: Акційні товари, що не продавались */}
-      {activeTab === 'promo' && !loading && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {/* ... Код промо (залишається без змін) ... */}
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID товару</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Назва</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">UPC (акційний)</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Акційна ціна</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {promoData.length > 0 ? (
-                promoData.map(item => (
-                  <tr key={item.promo_upc} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm">{item.id_product}</td>
-                    <td className="px-6 py-4 text-sm font-medium">{item.product_name}</td>
-                    <td className="px-6 py-4 text-sm font-mono">{item.promo_upc}</td>
-                    <td className="px-6 py-4 text-sm text-right">{formatCurrency(item.promo_price)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">Усі акційні товари мали продажі.</td></tr>
-              )}
-            </tbody>
-          </table>
+      {/* Вкладка 3: Категорії, де всі акційні товари продані */}
+      {activeTab === 'allPromoSold' && !loading && (
+        <div>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Категорія (всі акційні товари продані хоча б раз)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {allPromoSoldData.length > 0 ? (
+                  allPromoSoldData.map(item => (
+                    <tr key={item.category_name} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium">{item.category_name}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan="1" className="px-6 py-8 text-center text-gray-500">
+                    Немає категорій, де всі акційні товари були продані.
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
