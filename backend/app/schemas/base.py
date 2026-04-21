@@ -114,7 +114,10 @@ class CustomerCreate(BaseModel):
     cust_name: str
     cust_patronymic: Optional[str] = None
     phone_number: str
-    percent: int
+    city: Optional[str] = Field(None, max_length=50)
+    street: Optional[str] = Field(None, max_length=50)
+    zip_code: Optional[str] = Field(None, max_length=9)
+    percent: int = Field(..., ge=0)
 
 class CustomerCardCreate(CustomerCardBase):
     pass

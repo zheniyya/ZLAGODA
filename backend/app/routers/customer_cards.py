@@ -19,24 +19,25 @@ def create_customer_card(customer: CustomerCreate, current_user: dict = Depends(
             # 2. Generate the new card number
             if last_card_record and last_card_record["card_number"]:
                 last_card = last_card_record["card_number"]
-                # Slice off "CARD" (first 4 chars) and convert the rest to an integer
                 numeric_part = int(last_card[4:])
-                # Format: "CARD" + 9 digits with leading zeros
                 new_card_number = f"CARD{numeric_part + 1:09d}"
             else:
-                # If the table is completely empty
                 new_card_number = "CARD000000001"
 
-            # 3. Insert into Database
+            # 3. Insert into Database (Додано city, street, zip_code)
             cur.execute("""
-                INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, percent)
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
+                INSERT INTO Customer_Card 
+                (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
             """, (
                 new_card_number, 
                 customer.cust_surname,
                 customer.cust_name,
                 getattr(customer, "cust_patronymic", None),
                 customer.phone_number,
+                getattr(customer, "city", None),
+                getattr(customer, "street", None),
+                getattr(customer, "zip_code", None),
                 customer.percent
             ))
             
@@ -125,5 +126,18 @@ def delete_customer_card(card_number: str, current_user: dict = Depends(require_
             if not cur.fetchone():
                 raise HTTPException(status_code=404, detail="Карту клієнта не знайдено")
             conn.commit()
+    except Exception as e:
+        conn.rollback() # Відкочуємо транзакцію у разі помилки БД
+        error_msg = str(e).lower()
+        
+        # Перевіряємо, чи спрацювало обмеження зовнішнього ключа (PostgreSQL)
+        if "foreign key" in error_msg or "вік" in error_msg or "violates" in error_msg:
+            raise HTTPException(
+                status_code=400, 
+                detail="Неможливо видалити клієнта, оскільки за цією картою закріплені чеки."
+            )
+            
+        # Якщо це якась інша непередбачувана помилка
+        raise HTTPException(status_code=500, detail="Сталася помилка при видаленні клієнта.")
     finally:
         put_db_connection(conn)
