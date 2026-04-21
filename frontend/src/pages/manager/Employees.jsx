@@ -21,6 +21,7 @@ const Employees = () => {
     id_employee: '',
     empl_surname: '',
     empl_name: '',
+    empl_patronymic: '',
     empl_role: 'Cashier',
     salary: 0,
     date_of_birth: '',
@@ -76,7 +77,7 @@ const Employees = () => {
         
         if (response && response.generated_password) {
           setNewEmployeeCredentials({
-            name: `${payload.empl_name} ${payload.empl_surname}`,
+            ...payload,
             id: response.id_employee,
             password: response.generated_password
           });
@@ -210,7 +211,7 @@ const Employees = () => {
 
                 <input required placeholder="Прізвище" className="w-full border p-3 rounded-lg" value={formData.empl_surname} onChange={e => setFormData({...formData, empl_surname: e.target.value})} />
                 <input required placeholder="Ім'я" className="w-full border p-3 rounded-lg" value={formData.empl_name} onChange={e => setFormData({...formData, empl_name: e.target.value})} />
-                
+                <input required placeholder="По батькові" className="w-full border p-3 rounded-lg" value={formData.empl_patronymic} onChange={e => setFormData({...formData, empl_patronymic: e.target.value})} />
                 <select className="w-full border p-3 rounded-lg" value={formData.empl_role} onChange={e => setFormData({...formData, empl_role: e.target.value})}>
                   <option value="Cashier">Касир</option>
                   <option value="Manager">Менеджер</option>
