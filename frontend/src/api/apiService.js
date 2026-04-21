@@ -340,4 +340,25 @@ export const apiService = {
     if (USE_MOCK) return { success: true };
     return await axiosClient.delete(`/checks/${id}`);
   },
+  // В кінці об'єкта apiService додати:
+  // --- АНАЛІТИКА ДЛЯ МЕНЕДЖЕРА ---
+  getCustomerSummary: async () => {
+    const res = await axiosClient.get('/analytics/customer-summary');
+    return res.data;
+  },
+
+  getSalesByCategoryMonth: async () => {
+    const res = await axiosClient.get('/analytics/sales-by-category-month');
+    return res.data;
+  },
+
+  getPromoNeverSold: async () => {
+    const res = await axiosClient.get('/analytics/promo-never-sold');
+    return res.data;
+  },
+
+  getNotSoldForDays: async (days) => {
+    const res = await axiosClient.get('/analytics/not-sold-days', { params: { days } });
+    return res.data;
+  },
 };

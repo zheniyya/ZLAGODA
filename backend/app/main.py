@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import traceback
 
 # Імпортуємо ВСІ роутери
-from app.routers import auth, employees, categories, products, store_products, customer_cards, checks, sales, reports
+from app.routers import auth, employees, categories, products, store_products, customer_cards, checks, sales, reports, analytics
 
 from app.database import get_db_connection, put_db_connection
 
@@ -48,6 +48,7 @@ app.include_router(customer_cards.router, prefix="/api")
 app.include_router(checks.router, prefix="/api")
 app.include_router(sales.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 
 @app.get("/")
 def root():

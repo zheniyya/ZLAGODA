@@ -14,6 +14,8 @@ import Profile from './pages/cashier/Profile';
 
 import ChecksList from './pages/shared/ChecksList';
 import Customers from './pages/shared/Customers';
+import Stats from './pages/manager/Stats';
+
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
               <Route path="/manager/reports" element={<Reports />} /> 
               <Route path="/manager/customers" element={<Customers />} />
               <Route path="/manager/checks" element={<ChecksList />} />
+              <Route path="/manager/stats" element={<Stats />} />
+
             </Route>
           </Route>
 
