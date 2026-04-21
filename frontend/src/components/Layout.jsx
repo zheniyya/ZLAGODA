@@ -30,6 +30,7 @@ const Layout = () => {
               <Link to="/manager/checks" className="block px-4 py-2 rounded hover:bg-slate-700 transition">🧾 Всі чеки</Link>
               <Link to="/manager/customers" className="block px-4 py-2 rounded hover:bg-slate-700 transition">🛍️ Клієнти</Link>
               <Link to="/manager/reports" className="block px-4 py-2 rounded hover:bg-slate-700 transition">📊 Звіти</Link>
+              <Link to="/manager/stats" className="block px-4 py-2 rounded hover:bg-slate-700 transition">📊 Статистика</Link>
             </>
           )}
           
