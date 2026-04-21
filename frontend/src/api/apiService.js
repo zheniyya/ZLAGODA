@@ -75,6 +75,19 @@ export const apiService = {
     return (await axiosClient.post('/employees/', data)).data;
   },
 
+  getEmployees: async () => {
+    // Зверніть увагу на шлях! Якщо ваш бекенд використовує префікс /api/analytics
+    // вкажіть його тут повністю. Наприклад:
+    const response = await axiosClient.get('/analytics/employees/list'); 
+    // або axios.get('...'), залежно від того, як ви налаштували axios вище
+    return response.data;
+  },
+
+  getEmployeeSales: async (employeeId) => {
+    const response = await axiosClient.get(`/analytics/employee-sales/${employeeId}`);
+    return response.data;
+  },
+
   updateEmployee: async (id, data) => {
     if (USE_MOCK) {
       await delay(300);
@@ -82,6 +95,8 @@ export const apiService = {
     }
     return (await axiosClient.put(`/employees/${id}`, data)).data;
   },
+
+  
 
   // --- PRODUCTS (довідник) з серверним пошуком ---
   getProducts: async (params = {}) => {

@@ -116,3 +116,88 @@ def get_not_sold_for_days(
         raise HTTPException(status_code=500, detail=f"Помилка: {str(e)}")
     finally:
         put_db_connection(conn)
+
+# -------------------------------------------------------------------
+# 5. Статистика продажів по категоріях для конкретного працівника
+# -------------------------------------------------------------------
+@router.get("/employee-sales/{id_employee}", response_model=List[Dict[str, Any]])
+def get_employee_sales_by_category(
+    id_employee: str, 
+    current_user: dict = Depends(require_manager)
+):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # SQL-запит з параметром %s замість хардкоду ID
+            query = """
+                SELECT 
+                    c.category_name,
+                    COUNT(DISTINCT ch.check_number) AS unique_checks,
+                    SUM(s.product_number) AS total_products_sold,
+                    SUM(s.product_number * s.selling_price) AS total_sales_sum
+                FROM 
+                    "Check" ch
+                JOIN 
+                    sale s ON ch.check_number = s.check_number
+                JOIN 
+                    store_product sp ON s.upc = sp.upc
+                JOIN 
+                    product p ON sp.id_product = p.id_product
+                JOIN 
+                    category c ON p.category_number = c.category_number
+                WHERE 
+                    ch.id_employee = %s
+                GROUP BY 
+                    c.category_number, 
+                    c.category_name
+                ORDER BY 
+                    total_sales_sum DESC;
+            """
+            
+            # Безпечно передаємо id_employee як кортеж (id_employee,)
+            cur.execute(query, (id_employee,))
+            rows = cur.fetchall()
+            
+            result = []
+            for row in rows:
+                result.append({
+                    "category_name": row["category_name"],
+                    "unique_checks": row["unique_checks"],
+                    # Використовуємо if ... else 0 для уникнення помилок типу NoneType, якщо продажів не було
+                    "total_products_sold": int(row["total_products_sold"]) if row["total_products_sold"] else 0,
+                    "total_sales_sum": float(row["total_sales_sum"]) if row["total_sales_sum"] else 0.0
+                })
+            return result
+            
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Помилка: {str(e)}")
+    finally:
+        put_db_connection(conn)
+
+# Додайте це до файлу з вашими роутами (analytics)
+@router.get("/employees/list", response_model=List[Dict[str, Any]])
+def get_employees_list(current_user: dict = Depends(require_manager)):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Беремо id, прізвище та ім'я працівника для випадаючого списку
+            cur.execute("""
+                SELECT id_employee, empl_surname, empl_name 
+                FROM employee 
+                ORDER BY empl_surname;
+            """)
+            rows = cur.fetchall()
+            result = []
+            for row in rows:
+                result.append({
+                    "id_employee": row["id_employee"],
+                    "empl_surname": row["empl_surname"],
+                    "empl_name": row["empl_name"]
+                })
+            return result
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Помилка: {str(e)}")
+    finally:
+        put_db_connection(conn)

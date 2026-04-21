@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from app.schemas.base import EmployeeCreate, EmployeeResponse, EmployeeCreateResponse
 from app.security.permissions import require_manager, get_current_user
 from app.security.hashing import get_password_hash
