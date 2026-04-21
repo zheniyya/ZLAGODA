@@ -152,7 +152,7 @@ const Employees = () => {
         </button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+      <div className="flex-1 flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
         <input
           type="text"
           placeholder="🔍 Пошук за прізвищем..."
@@ -201,8 +201,8 @@ const Employees = () => {
 
       {/* Модальне вікно створення/редагування */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+          <div className="modal-content bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-6">{editingId ? 'Редагувати працівника' : 'Новий працівник'}</h3>
             
             <form onSubmit={handleSave} className="space-y-6">
@@ -266,8 +266,8 @@ const Employees = () => {
 
       {/* НОВЕ МОДАЛЬНЕ ВІКНО: Відображення згенерованих даних */}
       {newEmployeeCredentials && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full text-center border-t-8 border-green-500 transform transition-all">
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="modal-content bg-white p-8 rounded-xl shadow-2xl max-w-md w-full text-center border-t-8 border-green-500 transform transition-all">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
               <span className="text-green-600 text-2xl">✓</span>
             </div>

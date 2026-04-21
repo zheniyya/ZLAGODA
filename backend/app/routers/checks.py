@@ -29,20 +29,28 @@ def create_check(
         current_user: dict = Depends(require_cashier),
         conn=Depends(get_db_connection)
 ):
-    """
-    Створення нового чеку з повною транзакцією:
-    - Перевірка залишків на складі
-    - Розрахунок суми з урахуванням знижки клієнта
-    - Запис позицій у таблицю Sale
-    - Зменшення залишків у Store_Product
-    """
     if not check_data.items:
         raise HTTPException(status_code=400, detail="Чек не може бути порожнім")
 
-    check_number = str(uuid.uuid4())[:10]
-
     try:
         with conn.cursor() as cur:
+            # --- NEW: Generate sequential check_number (CHK + 7 digits) ---
+            cur.execute("""
+                SELECT check_number FROM "Check" 
+                WHERE check_number LIKE 'CHK%' 
+                ORDER BY check_number DESC LIMIT 1
+            """)
+            last_check = cur.fetchone()
+            
+            if last_check and last_check["check_number"]:
+                # Extract the numeric part (skip the first 3 characters 'CHK')
+                last_id_str = last_check["check_number"]
+                numeric_part = int(last_id_str[3:])
+                check_number = f"CHK{numeric_part + 1:07d}"
+            else:
+                check_number = "CHK0000001"
+            # --------------------------------------------------------------
+
             # 1. Отримуємо знижку клієнта (якщо є карта)
             discount_percent = 0
             if check_data.card_number:
@@ -128,7 +136,7 @@ def create_check(
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Помилка при створенні чеку: {str(e)}")
-
+    
 
 @router.get("/", response_model=List[CheckResponse])
 def get_all_checks(

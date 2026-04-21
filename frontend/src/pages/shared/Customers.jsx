@@ -69,7 +69,7 @@ const Customers = () => {
         </button>
       </div>
 
-      <div className="flex gap-4 mb-6 bg-white p-4 rounded shadow-sm">
+      <div className="flex-1 flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
         <input
           type="text"
           placeholder="🔍 Пошук за прізвищем або номером карти..."

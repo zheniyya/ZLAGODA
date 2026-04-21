@@ -64,7 +64,6 @@ class CategoryResponse(CategoryBase):
 class ProductBase(BaseModel):
     category_number: int
     product_name: str = Field(..., max_length=50)
-    manufacturer: str = Field(..., max_length=50)
     characteristics: str = Field(..., max_length=100)
 
 class ProductCreate(ProductBase):

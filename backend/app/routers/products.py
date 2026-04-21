@@ -12,9 +12,9 @@ def create_product(product: ProductBase, current_user: dict = Depends(require_ma
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO Product (category_number, product_name, manufacturer, characteristics) 
-                VALUES (%s, %s, %s, %s) RETURNING *
-            """, (product.category_number, product.product_name, product.manufacturer, product.characteristics))
+                INSERT INTO Product (category_number, product_name, characteristics) 
+                VALUES (%s, %s, %s) RETURNING *
+            """, (product.category_number, product.product_name, product.characteristics))
             new_product = cur.fetchone()
             conn.commit()
             return new_product
@@ -26,12 +26,11 @@ def update_product(id_product: int, product: ProductBase, current_user: dict = D
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Add manufacturer to UPDATE
             cur.execute("""
                 UPDATE Product 
-                SET category_number = %s, product_name = %s, manufacturer = %s, characteristics = %s 
+                SET category_number = %s, product_name = %s, characteristics = %s 
                 WHERE id_product = %s RETURNING *
-            """, (product.category_number, product.product_name, product.manufacturer, product.characteristics, id_product))
+            """, (product.category_number, product.product_name, product.characteristics, id_product))
             updated = cur.fetchone()
             if not updated:
                 raise HTTPException(status_code=404, detail="Товар не знайдено")

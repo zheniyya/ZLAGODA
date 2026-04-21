@@ -3,6 +3,26 @@ import { AuthContext } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
 import debounce from 'lodash/debounce';
 
+const parseErrorMessage = (err, defaultMessage) => {
+  const detail = err.response?.data?.detail;
+  
+  // If it's an array of objects (FastAPI 422 Validation Error)
+  if (Array.isArray(detail)) {
+    return detail.map(e => {
+      // Gets the specific field name that failed and the message
+      const fieldName = e.loc[e.loc.length - 1]; 
+      return `Помилка в полі "${fieldName}": ${e.msg}`;
+    }).join(' | ');
+  }
+  
+  // If it's a standard string error from your backend (e.g., 404 or 400)
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  
+  return defaultMessage;
+};
+
 const Products = () => {
   const { user } = useContext(AuthContext);
 
@@ -73,13 +93,12 @@ const Products = () => {
     setPromoFilter('');
   }, [activeTab]);
 
-  // --- CRUD: ТОВАРИ У МАГАЗИНІ ---
+// --- CRUD: ТОВАРИ У МАГАЗИНІ ---
   const saveStoreProduct = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     try {
       if (editingItem) {
-        // UPDATE (UPC already exists, so we just pass the ID in the URL and update fields)
         await apiService.updateStoreProduct(editingItem.upc, {
           id_product: formData.id_product,
           selling_price: formData.selling_price,
@@ -87,7 +106,6 @@ const Products = () => {
           promotional_product: formData.promotional_product || false
         });
       } else {
-        // CREATE (Backend handles the UPC generation entirely)
         await apiService.createStoreProduct({
           id_product: formData.id_product,
           selling_price: formData.selling_price,
@@ -98,8 +116,8 @@ const Products = () => {
       setIsStoreProductModalOpen(false);
       loadAllData();
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Помилка збереження';
-      setErrorMsg(detail);
+      // 🟢 FIX: Use the parser here
+      setErrorMsg(parseErrorMessage(err, 'Помилка збереження товару в магазині'));
     }
   };
 
@@ -115,7 +133,7 @@ const Products = () => {
     }
   };
 
-  // --- CRUD: ДОВІДНИК ТОВАРІВ ---
+// --- CRUD: ДОВІДНИК ТОВАРІВ ---
   const saveProduct = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -125,7 +143,8 @@ const Products = () => {
       setIsProductModalOpen(false);
       loadAllData();
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'Помилка збереження');
+      // 🟢 FIX: Use the parser here
+      setErrorMsg(parseErrorMessage(err, 'Помилка збереження'));
     }
   };
 
@@ -151,7 +170,8 @@ const Products = () => {
       setIsCatModalOpen(false);
       loadAllData();
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'Помилка збереження');
+      // 🟢 FIX: Use the parser here
+      setErrorMsg(parseErrorMessage(err, 'Помилка збереження'));
     }
   };
 
@@ -255,7 +275,7 @@ const handleProductSelect = (e) => {
       </div>
 
       {/* ПАНЕЛЬ ФІЛЬТРІВ ТА ПОШУКУ */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+      <div className="flex-1 flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
         <input
           type="text"
           placeholder="🔍 Пошук..."
@@ -498,10 +518,7 @@ const handleProductSelect = (e) => {
             {errorMsg && <div className="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">{errorMsg}</div>}
             <form onSubmit={saveProduct} className="space-y-4">
               <input required placeholder="Назва товару" className="w-full border p-3 rounded-lg" value={formData.product_name || ''} onChange={e => setFormData({ ...formData, product_name: e.target.value })} />
-              
-              {/* NEW INPUT FIELD FOR MANUFACTURER */}
-              <input required placeholder="Виробник" className="w-full border p-3 rounded-lg" value={formData.manufacturer || ''} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} />
-              
+                         
               <select required className="w-full border p-3 rounded-lg" value={formData.category_number || ''} onChange={e => setFormData({ ...formData, category_number: Number(e.target.value) })}>
                 <option value="" disabled>Оберіть категорію...</option>
                 {categories.map(c => <option key={c.category_number} value={c.category_number}>{c.category_name}</option>)}
