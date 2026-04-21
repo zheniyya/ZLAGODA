@@ -160,7 +160,7 @@ def get_all_store_products(
                 JOIN Product p ON sp.id_product = p.id_product
                 JOIN Category c ON p.category_number = c.category_number
                 {where}
-                ORDER BY p.product_name
+                ORDER BY sp.products_number
             """, params)
             products = cur.fetchall()
         return products

@@ -115,6 +115,7 @@ const ChecksList = () => {
             <th className="p-3">Дата</th>
             <th className="p-3">Касир</th>
             <th className="p-3">Сума (₴)</th>
+            <th className="p-3">ПДВ (₴)</th>
             <th className="p-3 text-right">Дії</th>
           </tr>
         </thead>
@@ -126,6 +127,7 @@ const ChecksList = () => {
                 <td className="p-3">{new Date(c.print_date).toLocaleString('uk-UA')}</td>
                 <td className="p-3">{c.id_employee}</td>
                 <td className="p-3 font-bold">{Number(c.sum_total).toFixed(2)}</td>
+                <td className="p-3 font-bold">{Number(c.vat).toFixed(2)}</td>
                 <td className="p-3 text-right space-x-2">
                   <button onClick={() => openDetails(c.check_number)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200">Деталі</button>
                   {user?.role === 'manager' && (
