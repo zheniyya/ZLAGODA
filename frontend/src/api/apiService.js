@@ -75,13 +75,7 @@ export const apiService = {
     return (await axiosClient.post('/employees/', data)).data;
   },
 
-  getEmployees: async () => {
-    // Зверніть увагу на шлях! Якщо ваш бекенд використовує префікс /api/analytics
-    // вкажіть його тут повністю. Наприклад:
-    const response = await axiosClient.get('/analytics/employees/list'); 
-    // або axios.get('...'), залежно від того, як ви налаштували axios вище
-    return response.data;
-  },
+
 
   getEmployeeSales: async (employeeId) => {
     const response = await axiosClient.get(`/analytics/employee-sales/${employeeId}`);

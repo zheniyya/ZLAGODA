@@ -135,18 +135,25 @@ const Products = () => {
   };
 
 // --- CRUD: ДОВІДНИК ТОВАРІВ ---
-  const saveProduct = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    try {
-      if (editingItem) await apiService.updateProduct(editingItem.id_product, formData);
-      else await apiService.createProduct(formData);
-      setIsProductModalOpen(false);
-      loadAllData();
-    } catch (err) {
-      setErrorMsg(parseErrorMessage(err, 'Помилка збереження'));
-    }
-  };
+  // У функції saveProduct перед відправкою:
+const saveProduct = async (e) => {
+  e.preventDefault();
+  setErrorMsg('');
+  try {
+    const payload = {
+      ...formData,
+      characteristics: formData.characteristics?.trim() || '—'   // <-- додано значення за замовчуванням
+    };
+
+    if (editingItem) await apiService.updateProduct(editingItem.id_product, payload);
+    else await apiService.createProduct(payload);
+
+    setIsProductModalOpen(false);
+    loadAllData();
+  } catch (err) {
+    setErrorMsg(parseErrorMessage(err, 'Помилка збереження'));
+  }
+};
 
   const deleteProduct = async (id) => {
     if (window.confirm('Видалити товар з довідника?')) {
@@ -523,8 +530,12 @@ const Products = () => {
                 <option value="" disabled>Оберіть категорію...</option>
                 {categories.map(c => <option key={c.category_number} value={c.category_number}>{c.category_name}</option>)}
               </select>
-              <textarea placeholder="Характеристики" className="w-full border p-3 rounded-lg" value={formData.characteristics || ''} onChange={e => setFormData({ ...formData, characteristics: e.target.value })} />
-              <div className="flex justify-end space-x-3">
+<textarea
+  placeholder="Характеристики"
+  className="w-full border p-3 rounded-lg"
+  value={formData.characteristics || ''}
+  onChange={e => setFormData({ ...formData, characteristics: e.target.value })}
+/>              <div className="flex justify-end space-x-3">
                 <button type="button" onClick={() => setIsProductModalOpen(false)} className="bg-gray-200 px-4 py-2 rounded-lg">Скасувати</button>
                 <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg">Зберегти</button>
               </div>

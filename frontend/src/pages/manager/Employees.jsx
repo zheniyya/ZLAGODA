@@ -257,63 +257,77 @@ const Employees = () => {
       )}
 
       {/* НОВЕ МОДАЛЬНЕ ВІКНО: Перегляд деталей працівника */}
-      {viewingEmployee && (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="modal-content bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center mb-6 border-b pb-4">
-              <h3 className="text-2xl font-bold text-gray-800">Деталі працівника</h3>
-              <button onClick={() => setViewingEmployee(null)} className="text-gray-400 hover:text-gray-700 font-bold text-2xl leading-none">✕</button>
-            </div>
-            
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">ПІБ</p>
-                <p className="text-lg font-medium text-gray-900">{viewingEmployee.empl_surname} {viewingEmployee.empl_name}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">ID працівника</p>
-                  <p className="text-lg font-mono text-gray-900">{viewingEmployee.id_employee}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Посада</p>
-                  <p className="text-lg font-medium text-gray-900">{viewingEmployee.empl_role}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Дата початку</p>
-                  <p className="text-lg font-medium text-gray-900">{viewingEmployee.date_of_start}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Зарплата</p>
-                  <p className="text-lg font-medium text-green-600">{viewingEmployee.salary} ₴</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Телефон</p>
-                <p className="text-lg font-medium text-gray-900">{viewingEmployee.phone_number}</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Домашня адреса</p>
-                <p className="text-md text-gray-900 leading-relaxed">
-                  м. {viewingEmployee.city}, вул. {viewingEmployee.street}<br/>
-                  Індекс: {viewingEmployee.zip_code}
-                </p>
-              </div>
-            </div>
+      {/* МОДАЛЬНЕ ВІКНО: Перегляд деталей працівника */}
+{viewingEmployee && (
+  <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="modal-content bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <h3 className="text-2xl font-bold text-gray-800">Деталі працівника</h3>
+        <button onClick={() => setViewingEmployee(null)} className="text-gray-400 hover:text-gray-700 font-bold text-2xl leading-none">✕</button>
+      </div>
 
-            <div className="mt-8 flex justify-end">
-              <button 
-                onClick={() => setViewingEmployee(null)} 
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition"
-              >
-                Закрити
-              </button>
-            </div>
+      <div className="space-y-5">
+        <div>
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">ПІБ</p>
+          <p className="text-lg font-medium text-gray-900">
+            {viewingEmployee.empl_surname || '—'} {viewingEmployee.empl_name || '—'}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">ID працівника</p>
+            <p className="text-lg font-mono text-gray-900">{viewingEmployee.id_employee || '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Посада</p>
+            <p className="text-lg font-medium text-gray-900">{viewingEmployee.empl_role || '—'}</p>
           </div>
         </div>
-      )}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Дата народження</p>
+            <p className="text-lg font-medium text-gray-900">
+              {viewingEmployee.date_of_birth ? new Date(viewingEmployee.date_of_birth).toLocaleDateString('uk-UA') : '—'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Дата початку</p>
+            <p className="text-lg font-medium text-gray-900">
+              {viewingEmployee.date_of_start ? new Date(viewingEmployee.date_of_start).toLocaleDateString('uk-UA') : '—'}
+            </p>
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Зарплата</p>
+          <p className="text-lg font-medium text-green-600">
+            {viewingEmployee.salary ? Number(viewingEmployee.salary).toFixed(2) : '0.00'} ₴
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Телефон</p>
+          <p className="text-lg font-medium text-gray-900">{viewingEmployee.phone_number || '—'}</p>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-lg border">
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Домашня адреса</p>
+          <p className="text-md text-gray-900 leading-relaxed">
+            {viewingEmployee.city ? `м. ${viewingEmployee.city}` : ''}
+            {viewingEmployee.street ? `, вул. ${viewingEmployee.street}` : ''}<br/>
+            {viewingEmployee.zip_code ? `Індекс: ${viewingEmployee.zip_code}` : ''}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-end">
+        <button
+          onClick={() => setViewingEmployee(null)}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition"
+        >
+          Закрити
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* НОВЕ МОДАЛЬНЕ ВІКНО: Відображення згенерованих даних */}
       {newEmployeeCredentials && (
