@@ -342,10 +342,13 @@ export const apiService = {
   },
   // В кінці об'єкта apiService додати:
   // --- АНАЛІТИКА ДЛЯ МЕНЕДЖЕРА ---
-  getCustomerSummary: async () => {
-    const res = await axiosClient.get('/analytics/customer-summary');
+  // В об'єкті apiService замініть метод getCustomerSummary
+getCustomerSummary: async (minPercent = 10) => {
+    const res = await axiosClient.get('/analytics/customer-summary', {
+        params: { min_percent: minPercent }
+    });
     return res.data;
-  },
+},
 
   getSalesByCategoryMonth: async () => {
     const res = await axiosClient.get('/analytics/sales-by-category-month');
@@ -361,4 +364,10 @@ export const apiService = {
     const res = await axiosClient.get('/analytics/not-sold-days', { params: { days } });
     return res.data;
   },
+
+
+  getCategoriesAllPromoSold: async () => {
+    const res = await axiosClient.get('/analytics/categories-all-promo-sold');
+    return res.data;
+},
 };

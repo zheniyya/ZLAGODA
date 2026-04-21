@@ -9,23 +9,28 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 # -------------------------------------------------------------------
 # 1. Звіт по клієнтах (використовує customer_summary_view)
 # -------------------------------------------------------------------
+# app/routers/analytics.py (фрагмент)
+
 @router.get("/customer-summary", response_model=List[Dict[str, Any]])
-def get_customer_summary(current_user: dict = Depends(require_manager)):
+def get_sales_by_discount(
+    min_percent: int = Query(10, ge=0, description="Мінімальний відсоток знижки клієнта"),
+    current_user: dict = Depends(require_manager)
+):
+    """
+    Продажі за категоріями серед клієнтів зі знижкою ≥ min_percent.
+    Повертає: назву категорії, кількість унікальних клієнтів, загальну суму продажів.
+    """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM customer_summary_view;")
+            cur.execute("SELECT * FROM get_sales_by_discount(%s);", (min_percent,))
             rows = cur.fetchall()
             result = []
             for row in rows:
                 result.append({
-                    "card_number": row["card_number"],
-                    "cust_surname": row["cust_surname"],
-                    "cust_name": row["cust_name"],
-                    "total_checks": row["total_checks"],
-                    "total_spent_with_discount": float(row["total_spent_with_discount"]),
-                    "total_without_discount": float(row["total_without_discount"]),
-                    "total_saved": float(row["total_saved"])
+                    "category_name": row["category_name"],
+                    "unique_customers": row["unique_customers"],
+                    "total_sales_amount": float(row["total_sales_amount"])
                 })
             return result
     except Exception as e:
@@ -65,20 +70,22 @@ def get_sales_by_category_month(current_user: dict = Depends(require_manager)):
 # -------------------------------------------------------------------
 # 3. Акційні товари, які жодного разу не продавались (promo_never_sold_view)
 # -------------------------------------------------------------------
-@router.get("/promo-never-sold", response_model=List[Dict[str, Any]])
-def get_promo_never_sold(current_user: dict = Depends(require_manager)):
+@router.get("/categories-all-promo-sold", response_model=List[Dict[str, Any]])
+def get_categories_all_promo_sold(
+    current_user: dict = Depends(require_manager)
+):
+    """
+    Повертає категорії, у яких ВСІ акційні товари були продані хоча б один раз.
+    """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM promo_never_sold_view;")
+            cur.execute("SELECT * FROM get_categories_where_all_promotional_products_sold(%s);", (True,))
             rows = cur.fetchall()
             result = []
             for row in rows:
                 result.append({
-                    "id_product": row["id_product"],
-                    "product_name": row["product_name"],
-                    "promo_upc": row["promo_upc"],
-                    "promo_price": float(row["promo_price"])
+                    "category_name": row["category_name"]
                 })
             return result
     except Exception as e:
