@@ -19,10 +19,7 @@ else:
 print(f"🔗 Підключення до БД (Supabase Pooler): {DATABASE_URL.replace(DATABASE_URL.split('@')[0].split(':')[2], '***')}")
 
 def get_db_connection():
-    """
-    Supabase on port 6543 handles pooling on the server side.
-    We simply open a standard connection here.
-    """
+
     try:
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
@@ -31,9 +28,6 @@ def get_db_connection():
         raise
 
 def put_db_connection(conn):
-    """
-    Closing the connection here tells Supabase we are done with it 
-    so they can recycle it in their PgBouncer pool.
-    """
+
     if conn and not conn.closed:
         conn.close()
