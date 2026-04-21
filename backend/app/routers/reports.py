@@ -39,7 +39,7 @@ def report_employees(
         rows = [[row[h] for h in row.keys()] for row in data]
         pdf_buffer = generate_pdf_report(title, headers, rows)
         return Response(content=pdf_buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=employees_report.pdf"})
+                        headers={"Content-Disposition": "inline; filename=employees_report.pdf"})
     finally:
         put_db_connection(conn)
 
@@ -75,7 +75,7 @@ def report_products(
         rows = [[row[h] for h in row.keys()] for row in data]
         pdf_buffer = generate_pdf_report(title, headers, rows)
         return Response(content=pdf_buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=products_report.pdf"})
+                        headers={"Content-Disposition": "inline; filename=products_report.pdf"})
     finally:
         put_db_connection(conn)
 
@@ -130,7 +130,7 @@ def report_checks(
         rows = [[row[h] for h in row.keys()] for row in data]
         pdf_buffer = generate_pdf_report(title, headers, rows)
         return Response(content=pdf_buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=checks_report.pdf"})
+                        headers={"Content-Disposition": "inline; filename=checks_report.pdf"})
     finally:
         put_db_connection(conn)
 
@@ -167,7 +167,7 @@ def report_store_products(
         rows = [[row[h] for h in row.keys()] for row in data]
         pdf_buffer = generate_pdf_report(title, headers, rows)
         return Response(content=pdf_buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=store_products_report.pdf"})
+                        headers={"Content-Disposition": "inline; filename=store_products_report.pdf"})
     finally:
         put_db_connection(conn)
 
@@ -183,7 +183,7 @@ def report_categories(current_user: dict = Depends(require_manager)):
         rows = [[row[h] for h in row.keys()] for row in data]
         pdf_buffer = generate_pdf_report("Categories Report", headers, rows)
         return Response(content=pdf_buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=categories_report.pdf"})
+                        headers={"Content-Disposition": "inline; filename=categories_report.pdf"})
     finally:
         put_db_connection(conn)
 
@@ -217,7 +217,7 @@ def report_customer_cards(
         rows = [[row[h] for h in row.keys()] for row in data]
         pdf_buffer = generate_pdf_report(title, headers, rows)
         return Response(content=pdf_buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=customer_cards_report.pdf"})
+                        headers={"Content-Disposition": "inline; filename=customer_cards_report.pdf"})
     finally:
         put_db_connection(conn)
 
@@ -257,6 +257,6 @@ def report_cashier_summary(
         title = f"Cashier Summary — {cashier_id}"
         pdf_buffer = generate_pdf_report(title, headers, rows)
         return Response(content=pdf_buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=cashier_summary.pdf"})
+                        headers={"Content-Disposition": "inline; filename=cashier_summary.pdf"})
     finally:
         put_db_connection(conn)

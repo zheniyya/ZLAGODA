@@ -43,6 +43,8 @@ const Products = () => {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
 
+  const [viewingStoreProduct, setViewingStoreProduct] = useState(null);
+
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [errorMsg, setErrorMsg] = useState('');
@@ -116,7 +118,6 @@ const Products = () => {
       setIsStoreProductModalOpen(false);
       loadAllData();
     } catch (err) {
-      // 🟢 FIX: Use the parser here
       setErrorMsg(parseErrorMessage(err, 'Помилка збереження товару в магазині'));
     }
   };
@@ -128,7 +129,7 @@ const Products = () => {
         loadAllData();
       } catch (err) {
         const detail = err.response?.data?.detail || 'Помилка видалення товару з магазину.';
-        alert(detail); // Show the error to the user
+        alert(detail);
       }
     }
   };
@@ -143,7 +144,6 @@ const Products = () => {
       setIsProductModalOpen(false);
       loadAllData();
     } catch (err) {
-      // 🟢 FIX: Use the parser here
       setErrorMsg(parseErrorMessage(err, 'Помилка збереження'));
     }
   };
@@ -155,7 +155,7 @@ const Products = () => {
         loadAllData();
       } catch (err) {
         const detail = err.response?.data?.detail || 'Помилка видалення товару.';
-        alert(detail); // Show the error to the user
+        alert(detail);
       }
     }
   };
@@ -170,7 +170,6 @@ const Products = () => {
       setIsCatModalOpen(false);
       loadAllData();
     } catch (err) {
-      // 🟢 FIX: Use the parser here
       setErrorMsg(parseErrorMessage(err, 'Помилка збереження'));
     }
   };
@@ -181,60 +180,59 @@ const Products = () => {
         await apiService.deleteCategory(id);
         loadAllData();
       } catch (err) {
-        // This will catch the 400 error from your FastAPI backend
         const detail = err.response?.data?.detail || 'Помилка видалення категорії.';
-        alert(detail); // Show the error to the user
+        alert(detail);
       }
     }
   };
 
   // --- Updated Checkbox Handler ---
-const handlePromoToggle = (e) => {
-  const isPromo = e.target.checked;
-  let newPrice = formData.selling_price;
+  const handlePromoToggle = (e) => {
+    const isPromo = e.target.checked;
+    let newPrice = formData.selling_price;
 
-  if (isPromo && formData.id_product) {
-    const existingRegular = storeProducts.find(
-      (sp) => sp.id_product === formData.id_product && !sp.promotional_product
-    );
-    if (existingRegular) {
-      // Auto-calculate the 80% price
-      newPrice = (parseFloat(existingRegular.selling_price) * 0.8).toFixed(2);
-    } else {
-      setErrorMsg("Спочатку додайте звичайний товар, щоб створити акційний.");
-      return; // Prevent checking the box if no regular product exists
-    }
-  }
-
-  setFormData({ 
-    ...formData, 
-    promotional_product: isPromo, 
-    selling_price: newPrice 
-  });
-};
-
-// --- Updated Product Select Handler ---
-const handleProductSelect = (e) => {
-  const selectedIdProduct = Number(e.target.value);
-  const existingRegular = storeProducts.find(
-    (sp) => sp.id_product === selectedIdProduct && !sp.promotional_product
-  );
-
-  let newPrice = '';
-  if (formData.promotional_product) {
+    if (isPromo && formData.id_product) {
+      const existingRegular = storeProducts.find(
+        (sp) => sp.id_product === formData.id_product && !sp.promotional_product
+      );
       if (existingRegular) {
-          newPrice = (parseFloat(existingRegular.selling_price) * 0.8).toFixed(2);
+        // Auto-calculate the 80% price
+        newPrice = (parseFloat(existingRegular.selling_price) * 0.8).toFixed(2);
+      } else {
+        setErrorMsg("Спочатку додайте звичайний товар, щоб створити акційний.");
+        return; // Prevent checking the box if no regular product exists
       }
-  } else if (existingRegular) {
-      newPrice = existingRegular.selling_price;
-  }
+    }
 
-  setFormData({ 
-    ...formData, 
-    id_product: selectedIdProduct, 
-    selling_price: newPrice 
-  });
-};
+    setFormData({ 
+      ...formData, 
+      promotional_product: isPromo, 
+      selling_price: newPrice 
+    });
+  };
+
+  // --- Updated Product Select Handler ---
+  const handleProductSelect = (e) => {
+    const selectedIdProduct = Number(e.target.value);
+    const existingRegular = storeProducts.find(
+      (sp) => sp.id_product === selectedIdProduct && !sp.promotional_product
+    );
+
+    let newPrice = '';
+    if (formData.promotional_product) {
+        if (existingRegular) {
+            newPrice = (parseFloat(existingRegular.selling_price) * 0.8).toFixed(2);
+        }
+    } else if (existingRegular) {
+        newPrice = existingRegular.selling_price;
+    }
+
+    setFormData({ 
+      ...formData, 
+      id_product: selectedIdProduct, 
+      selling_price: newPrice 
+    });
+  };
 
   const isManager = user?.role?.toLowerCase() === 'manager';
 
@@ -358,10 +356,12 @@ const handleProductSelect = (e) => {
                 </td>
                 <td className="p-3">{sp.promotional_product ? '🔥 Так' : 'Ні'}</td>
                 <td className="p-3 text-right space-x-2">
+                  {/* КНОПКА "ДЕТАЛІ" ДОСТУПНА ВСІМ */}
+                  <button onClick={() => setViewingStoreProduct(sp)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">Дет.</button>
                   {isManager && (
                     <>
-                      <button onClick={() => { setEditingItem(sp); setFormData(sp); setErrorMsg(''); setIsStoreProductModalOpen(true); }} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm">Ред.</button>
-                      <button onClick={() => deleteStoreProduct(sp.upc)} className="bg-red-600 text-white px-3 py-1 rounded text-sm">Вид.</button>
+                      <button onClick={() => { setEditingItem(sp); setFormData(sp); setErrorMsg(''); setIsStoreProductModalOpen(true); }} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">Ред.</button>
+                      <button onClick={() => deleteStoreProduct(sp.upc)} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Вид.</button>
                     </>
                   )}
                 </td>
@@ -391,8 +391,8 @@ const handleProductSelect = (e) => {
                 <td className="p-3 text-right space-x-2">
                   {isManager && (
                     <>
-                      <button onClick={() => { setEditingItem(p); setFormData(p); setErrorMsg(''); setIsProductModalOpen(true); }} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm">Ред.</button>
-                      <button onClick={() => deleteProduct(p.id_product)} className="bg-red-600 text-white px-3 py-1 rounded text-sm">Вид.</button>
+                      <button onClick={() => { setEditingItem(p); setFormData(p); setErrorMsg(''); setIsProductModalOpen(true); }} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">Ред.</button>
+                      <button onClick={() => deleteProduct(p.id_product)} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Вид.</button>
                     </>
                   )}
                 </td>
@@ -420,8 +420,8 @@ const handleProductSelect = (e) => {
                 <td className="p-3 text-right space-x-2">
                   {isManager && (
                     <>
-                      <button onClick={() => { setEditingItem(c); setFormData(c); setErrorMsg(''); setIsCatModalOpen(true); }} className="bg-yellow-500 text-white px-3 py-1 rounded">Редагувати</button>
-                      <button onClick={() => deleteCategory(c.category_number)} className="bg-red-600 text-white px-3 py-1 rounded">Видалити</button>
+                      <button onClick={() => { setEditingItem(c); setFormData(c); setErrorMsg(''); setIsCatModalOpen(true); }} className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600">Редагувати</button>
+                      <button onClick={() => deleteCategory(c.category_number)} className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Видалити</button>
                     </>
                   )}
                 </td>
@@ -549,6 +549,72 @@ const handleProductSelect = (e) => {
           </div>
         </div>
       )}
+
+      {/* ========== НОВЕ МОДАЛЬНЕ ВІКНО: ДЕТАЛІ ТОВАРУ ========== */}
+      {viewingStoreProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center mb-6 border-b pb-4">
+              <h3 className="text-2xl font-bold text-gray-800">Деталі товару</h3>
+              <button onClick={() => setViewingStoreProduct(null)} className="text-gray-400 hover:text-gray-700 font-bold text-2xl leading-none">✕</button>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Назва товару</p>
+                <p className="text-lg font-medium text-gray-900">
+                  {viewingStoreProduct.product_name || products.find(p => p.id_product === viewingStoreProduct.id_product)?.product_name || '—'}
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Характеристики</p>
+                <p className="text-md text-gray-900">
+                  {viewingStoreProduct.characteristics || products.find(p => p.id_product === viewingStoreProduct.id_product)?.characteristics || '—'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">UPC-код</p>
+                  <p className="text-lg font-mono text-gray-900">{viewingStoreProduct.upc}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Тип</p>
+                  <p className="text-lg font-medium text-gray-900">
+                    {viewingStoreProduct.promotional_product ? '🔥 Акційний' : 'Звичайний'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Ціна продажу</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {Number(viewingStoreProduct.selling_price).toFixed(2)} ₴
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">В наявності</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {viewingStoreProduct.products_number} <span className="text-sm font-normal">шт.</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={() => setViewingStoreProduct(null)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition"
+              >
+                Закрити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

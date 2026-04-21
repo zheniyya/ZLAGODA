@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiService } from '../../api/apiService';
 
 const Reports = () => {
   const [showFilters, setShowFilters] = useState({});
@@ -14,6 +15,30 @@ const Reports = () => {
     cashierSummaryStart: '',
     cashierSummaryEnd: ''
   });
+
+  // --- ДАНІ ДЛЯ ВИПАДАЮЧИХ СПИСКІВ ---
+  const [categories, setCategories] = useState([]);
+  const [cashiers, setCashiers] = useState([]);
+
+  // --- СТАН ДЛЯ ПОПЕРЕДНЬОГО ПЕРЕГЛЯДУ PDF ---
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Завантажуємо категорії та касирів для "дружнього" інтерфейсу
+    const fetchDropdownData = async () => {
+      try {
+        const fetchedCategories = await apiService.getCategories();
+        setCategories(fetchedCategories);
+
+        const fetchedEmployees = await apiService.getEmployees({ role: 'cashier' });
+        setCashiers(fetchedEmployees);
+      } catch (error) {
+        console.error("Помилка завантаження даних для фільтрів:", error);
+      }
+    };
+    fetchDropdownData();
+  }, []);
 
   const toggleFilters = (reportKey) => {
     setShowFilters(prev => ({ ...prev, [reportKey]: !prev[reportKey] }));
@@ -34,7 +59,8 @@ const Reports = () => {
     return qs ? `?${qs}` : '';
   };
 
-  const downloadReport = async (endpoint, filename, params = {}) => {
+  const previewReport = async (endpoint, params = {}) => {
+    setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -61,68 +87,71 @@ const Reports = () => {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      setPreviewUrl(url); // Відкриваємо модалку замість збереження файлу
     } catch (error) {
       console.error("Помилка генерації звіту:", error);
       alert(`Помилка: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     }
   };
 
   // --- Функції-обгортки для кожного звіту з параметрами ---
-  const downloadEmployeesReport = () => {
+  const handlePreviewEmployees = () => {
     const params = {};
     if (filterValues.employeesRole) params.role = filterValues.employeesRole;
-    downloadReport('/reports/employees', 'employees_report.pdf', params);
+    previewReport('/reports/employees', params);
   };
 
-  const downloadProductsReport = () => {
+  const handlePreviewProducts = () => {
     const params = {};
     if (filterValues.productsCategoryId) params.category_id = filterValues.productsCategoryId;
-    downloadReport('/reports/products', 'products_report.pdf', params);
+    previewReport('/reports/products', params);
   };
 
-  const downloadChecksReport = () => {
+  const handlePreviewChecks = () => {
     const params = {};
     if (filterValues.checksCashierId) params.cashier_id = filterValues.checksCashierId;
     if (filterValues.checksStartDate) params.start_date = filterValues.checksStartDate;
     if (filterValues.checksEndDate) params.end_date = filterValues.checksEndDate;
-    downloadReport('/reports/checks', 'checks_report.pdf', params);
+    previewReport('/reports/checks', params);
   };
 
-  const downloadStoreProductsReport = () => {
+  const handlePreviewStoreProducts = () => {
     const params = {};
     if (filterValues.storePromotional !== '') {
       params.promotional = filterValues.storePromotional === 'true';
     }
-    downloadReport('/reports/store_products', 'store_products_report.pdf', params);
+    previewReport('/reports/store_products', params);
   };
 
-  const downloadCategoriesReport = () => {
-    downloadReport('/reports/categories', 'categories_report.pdf');
+  const handlePreviewCategories = () => {
+    previewReport('/reports/categories');
   };
 
-  const downloadCustomerCardsReport = () => {
+  const handlePreviewCustomerCards = () => {
     const params = {};
     if (filterValues.cardsMinPercent) params.min_percent = filterValues.cardsMinPercent;
-    downloadReport('/reports/customer_cards', 'customer_cards_report.pdf', params);
+    previewReport('/reports/customer_cards', params);
   };
 
-  const downloadCashierSummaryReport = () => {
+  const handlePreviewCashierSummary = () => {
     const params = {};
     if (filterValues.cashierSummaryId) params.cashier_id = filterValues.cashierSummaryId;
     if (filterValues.cashierSummaryStart) params.start_date = filterValues.cashierSummaryStart;
     if (filterValues.cashierSummaryEnd) params.end_date = filterValues.cashierSummaryEnd;
-    downloadReport('/reports/cashier-summary', 'cashier_summary.pdf', params);
+    previewReport('/reports/cashier-summary', params);
   };
 
   return (
-    <div className="p-6 md:p-10">
+    <div className="p-6 md:p-10 relative">
       <h2 className="text-3xl font-bold mb-8 text-gray-800">Друк Звітів з фільтрацією</h2>
 
       <div className="space-y-6">
@@ -159,20 +188,22 @@ const Reports = () => {
                 </select>
               </div>
               <button
-                onClick={downloadEmployeesReport}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewEmployees}
+                disabled={isLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF
+                Переглянути звіт
               </button>
             </div>
           )}
           {!showFilters.employees && (
             <div className="mt-4">
               <button
-                onClick={downloadEmployeesReport}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewEmployees}
+                disabled={isLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF (всі)
+                Переглянути звіт (всі)
               </button>
             </div>
           )}
@@ -185,7 +216,7 @@ const Reports = () => {
               <span className="text-4xl">📦</span>
               <div>
                 <h3 className="font-bold text-xl text-gray-800">Звіт: Довідник Товарів</h3>
-                <p className="text-sm text-gray-500">Фільтр за категорією (ID)</p>
+                <p className="text-sm text-gray-500">Фільтр за категорією</p>
               </div>
             </div>
             <button
@@ -199,30 +230,37 @@ const Reports = () => {
           {showFilters.products && (
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID категорії</label>
-                <input
-                  type="number"
-                  placeholder="Наприклад, 1"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Оберіть категорію</label>
+                <select
                   value={filterValues.productsCategoryId}
                   onChange={(e) => handleFilterChange('productsCategoryId', e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-2.5"
-                />
+                >
+                  <option value="">Всі категорії</option>
+                  {categories.map(c => (
+                    <option key={c.category_number} value={c.category_number}>
+                      {c.category_name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
-                onClick={downloadProductsReport}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewProducts}
+                disabled={isLoading}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF
+                Переглянути звіт
               </button>
             </div>
           )}
           {!showFilters.products && (
             <div className="mt-4">
               <button
-                onClick={downloadProductsReport}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewProducts}
+                disabled={isLoading}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF (всі)
+                Переглянути звіт (всі)
               </button>
             </div>
           )}
@@ -249,14 +287,19 @@ const Reports = () => {
           {showFilters.checks && (
             <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID касира</label>
-                <input
-                  type="text"
-                  placeholder="Наприклад, CSH001"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Оберіть касира</label>
+                <select
                   value={filterValues.checksCashierId}
                   onChange={(e) => handleFilterChange('checksCashierId', e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-2.5"
-                />
+                >
+                  <option value="">Всі касири</option>
+                  {cashiers.map(c => (
+                    <option key={c.id_employee} value={c.id_employee}>
+                      {c.empl_surname} {c.empl_name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Початкова дата</label>
@@ -277,20 +320,22 @@ const Reports = () => {
                 />
               </div>
               <button
-                onClick={downloadChecksReport}
-                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewChecks}
+                disabled={isLoading}
+                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF
+                Переглянути звіт
               </button>
             </div>
           )}
           {!showFilters.checks && (
             <div className="mt-4">
               <button
-                onClick={downloadChecksReport}
-                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewChecks}
+                disabled={isLoading}
+                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF (всі)
+                Переглянути звіт (всі)
               </button>
             </div>
           )}
@@ -329,20 +374,22 @@ const Reports = () => {
                 </select>
               </div>
               <button
-                onClick={downloadStoreProductsReport}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewStoreProducts}
+                disabled={isLoading}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF
+                Переглянути звіт
               </button>
             </div>
           )}
           {!showFilters.store && (
             <div className="mt-4">
               <button
-                onClick={downloadStoreProductsReport}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewStoreProducts}
+                disabled={isLoading}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF (всі)
+                Переглянути звіт (всі)
               </button>
             </div>
           )}
@@ -359,10 +406,11 @@ const Reports = () => {
               </div>
             </div>
             <button
-              onClick={downloadCategoriesReport}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+              onClick={handlePreviewCategories}
+              disabled={isLoading}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
             >
-              Завантажити PDF
+              Переглянути звіт
             </button>
           </div>
         </div>
@@ -400,20 +448,22 @@ const Reports = () => {
                 />
               </div>
               <button
-                onClick={downloadCustomerCardsReport}
-                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewCustomerCards}
+                disabled={isLoading}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF
+                Переглянути звіт
               </button>
             </div>
           )}
           {!showFilters.cards && (
             <div className="mt-4">
               <button
-                onClick={downloadCustomerCardsReport}
-                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                onClick={handlePreviewCustomerCards}
+                disabled={isLoading}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF (всі)
+                Переглянути звіт (всі)
               </button>
             </div>
           )}
@@ -440,14 +490,19 @@ const Reports = () => {
           {showFilters.cashierSummary && (
             <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID касира (обов'язково)</label>
-                <input
-                  type="text"
-                  placeholder="Наприклад, CSH001"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Оберіть касира (обов'язково)</label>
+                <select
                   value={filterValues.cashierSummaryId}
                   onChange={(e) => handleFilterChange('cashierSummaryId', e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-2.5"
-                />
+                >
+                  <option value="">Оберіть касира...</option>
+                  {cashiers.map(c => (
+                    <option key={c.id_employee} value={c.id_employee}>
+                      {c.empl_surname} {c.empl_name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Початкова дата</label>
@@ -468,11 +523,11 @@ const Reports = () => {
                 />
               </div>
               <button
-                onClick={downloadCashierSummaryReport}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
-                disabled={!filterValues.cashierSummaryId}
+                onClick={handlePreviewCashierSummary}
+                disabled={!filterValues.cashierSummaryId || isLoading}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Завантажити PDF
+                Переглянути звіт
               </button>
             </div>
           )}
@@ -480,14 +535,39 @@ const Reports = () => {
             <div className="mt-4">
               <button
                 onClick={() => toggleFilters('cashierSummary')}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-6 rounded-lg transition"
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-6 rounded-lg transition disabled:opacity-50"
               >
-                Налаштувати та завантажити
+                Налаштувати та переглянути
               </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* ========== ВБУДОВАНИЙ ПЕРЕГЛЯДАЧ PDF ========== */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-gray-900 bg-opacity-95 p-4 md:p-8">
+          <div className="flex justify-between items-center mb-4 text-white">
+            <div>
+              <h2 className="text-2xl font-bold">Попередній перегляд звіту</h2>
+              <p className="text-sm text-gray-400 mt-1">Використовуйте іконку принтера або завантаження у панелі PDF-переглядача.</p>
+            </div>
+            <button 
+              onClick={closePreview} 
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-bold transition shadow-lg"
+            >
+              Закрити перегляд
+            </button>
+          </div>
+          <div className="flex-1 bg-white rounded-lg shadow-2xl overflow-hidden">
+            <iframe 
+              src={previewUrl} 
+              className="w-full h-full border-none" 
+              title="PDF Preview"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
