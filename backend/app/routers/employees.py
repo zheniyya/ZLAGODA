@@ -13,23 +13,20 @@ router = APIRouter(prefix="/employees", tags=["Employees"])
 def create_employee(employee: EmployeeCreate, current_user: dict = Depends(require_manager)):
     conn = get_db_connection()
     try:
-        # 1. Generate a secure 8-character random password
+        # generate a secure 8-character random password
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
         raw_password = ''.join(secrets.choice(alphabet) for i in range(8))
         hashed_password = get_password_hash(raw_password)
 
         with conn.cursor() as cur:
-            # 2. Determine the prefix based on the role
             prefix = "MGR" if employee.empl_role.lower() == "manager" else "CSH"
 
-            # 3. Find the highest existing ID with this prefix
             cur.execute(
                 "SELECT id_employee FROM Employee WHERE id_employee LIKE %s ORDER BY id_employee DESC LIMIT 1",
                 (f"{prefix}%",)
             )
             last_id_record = cur.fetchone()
 
-            # 4. Generate the new ID
             if last_id_record and last_id_record["id_employee"]:
                 last_id = last_id_record["id_employee"]
                 numeric_part = int(last_id[len(prefix):])
@@ -37,7 +34,6 @@ def create_employee(employee: EmployeeCreate, current_user: dict = Depends(requi
             else:
                 new_id = f"{prefix}001"
 
-            # 5. INSERT ЗМІНЕНО: Видалено password_hash з основної таблиці Employee
             cur.execute("""
                 INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, 
                     empl_role, salary, date_of_birth, date_of_start, phone_number, city, street, zip_code)
@@ -59,7 +55,6 @@ def create_employee(employee: EmployeeCreate, current_user: dict = Depends(requi
 
             new_employee = dict(cur.fetchone())
 
-            # НОВА ВСТАВКА: Додаємо дані в таблицю Employee_Auth
             cur.execute("""
                 INSERT INTO Employee_Auth (id_employee, password_hash)
                 VALUES (%s, %s)

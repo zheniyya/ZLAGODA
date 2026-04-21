@@ -9,16 +9,14 @@ import uuid
 router = APIRouter(prefix="/store_products", tags=["StoreProducts"])
 
 
-# Helper function to guarantee a unique UPC
 def generate_unique_upc(cur):
     while True:
-        # Generate a random 12-digit string
         new_upc = str(randint(100000000000, 999999999999))
         
         # Check if it already exists
         cur.execute("SELECT upc FROM Store_Product WHERE upc = %s", (new_upc,))
         if not cur.fetchone():
-            return new_upc # It's unique, return it
+            return new_upc
 
 @router.post("/", response_model=StoreProductResponse, status_code=status.HTTP_201_CREATED)
 def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = Depends(require_manager)):
@@ -34,11 +32,7 @@ def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = 
             existing_product = cur.fetchone()
 
             if not sp.promotional_product:
-                # ==========================================
-                # SCENARIO A: HANDLING REGULAR PRODUCTS
-                # ==========================================
                 if existing_product:
-                    # 1. Product exists: Add quantities, update to the new price
                     new_qty = existing_product['products_number'] + sp.products_number
                     
                     cur.execute("""
@@ -48,7 +42,6 @@ def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = 
                     """, (sp.selling_price, new_qty, existing_product['upc']))
                     saved_product = cur.fetchone()
 
-                    # 2. Revaluate the promo product if it exists!
                     promo_price = round(float(sp.selling_price) * 0.8, 2)
                     cur.execute("""
                         UPDATE Store_Product 
@@ -56,7 +49,6 @@ def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = 
                         WHERE id_product = %s AND promotional_product = TRUE
                     """, (promo_price, sp.id_product))
                 else:
-                    # 1. Product doesn't exist: Standard Insert for the new regular batch
                     upc = generate_unique_upc(cur)
                     cur.execute("""
                         INSERT INTO Store_Product 
@@ -65,8 +57,6 @@ def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = 
                     """, (upc, sp.id_product, sp.selling_price, sp.products_number))
                     saved_product = cur.fetchone()
 
-                    # 2. THE FIX: If there is a leftover promo product on the shelves, 
-                    # we MUST forcefully update its price to match the new regular product's price!
                     promo_price = round(float(sp.selling_price) * 0.8, 2)
                     cur.execute("""
                         UPDATE Store_Product 

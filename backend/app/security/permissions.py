@@ -28,7 +28,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 def require_manager(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "manager":   # було "Manager"
+    if current_user["role"] != "manager":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ заборонено. Потрібні права Менеджера."
@@ -36,7 +36,7 @@ def require_manager(current_user: dict = Depends(get_current_user)):
     return current_user
 
 def require_cashier(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "cashier":   # було "Cashier"
+    if current_user["role"] != "cashier":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ заборонено. Тільки Касир може виконувати цю дію."

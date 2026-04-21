@@ -6,16 +6,13 @@ import debounce from 'lodash/debounce';
 const parseErrorMessage = (err, defaultMessage) => {
   const detail = err.response?.data?.detail;
   
-  // If it's an array of objects (FastAPI 422 Validation Error)
   if (Array.isArray(detail)) {
     return detail.map(e => {
-      // Gets the specific field name that failed and the message
       const fieldName = e.loc[e.loc.length - 1]; 
       return `Помилка в полі "${fieldName}": ${e.msg}`;
     }).join(' | ');
   }
   
-  // If it's a standard string error from your backend (e.g., 404 or 400)
   if (typeof detail === 'string') {
     return detail;
   }

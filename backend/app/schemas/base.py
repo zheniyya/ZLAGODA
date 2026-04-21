@@ -72,19 +72,15 @@ class ProductCreate(ProductBase):
 class ProductResponse(ProductBase):
     id_product: int # Повертається з бази
 
-
-# --- STORE_PRODUCT ---
 class StoreProductBase(BaseModel):
     id_product: int
     selling_price: Decimal = Field(..., ge=0)
     products_number: int = Field(..., ge=0)
     promotional_product: bool
 
-# The frontend will send exactly this (no UPC):
 class StoreProductCreate(StoreProductBase):
     pass 
 
-# The backend will respond with this (including the generated UPC):
 class StoreProductResponse(StoreProductBase):
     upc: str = Field(..., max_length=12)
     upc_prom: Optional[str] = Field(None, max_length=12)
@@ -127,11 +123,9 @@ class CustomerCardResponse(CustomerCardBase):
 
 
 # --- CHECK ---
-# ВИПРАВЛЕННЯ: Касир при створенні передає ТІЛЬКИ карту клієнта (якщо є)
 class CheckCreate(BaseModel):
     card_number: Optional[str] = Field(None, max_length=13)
 
-# А ось у відповіді ми віддаємо всі поля, які згенерувала база/бекенд
 class CheckResponse(BaseModel):
     check_number: str
     id_employee: str
@@ -144,8 +138,7 @@ class CheckResponse(BaseModel):
 # --- SALE ---
 class SaleCreate(BaseModel):
     UPC: str = Field(..., max_length=12)
-    product_number: int = Field(..., ge=1) # Скільки штук купує
-    # check_number береться з URL, selling_price береться з БД
+    product_number: int = Field(..., ge=1)
 
 class SaleResponse(BaseModel):
     UPC: str

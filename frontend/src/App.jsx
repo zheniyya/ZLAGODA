@@ -19,9 +19,7 @@ import Stats from './pages/manager/Stats';
 
 function App() {
   return (
-    // 1. Move Router to the very top level
     <Router>
-      {/* 2. Now AuthProvider is inside Router, so useNavigate will work inside AuthContext! */}
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />

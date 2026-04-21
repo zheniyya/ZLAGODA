@@ -12,7 +12,6 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-# Для тестування – згенеруйте хеші для ваших тестових паролів
 if __name__ == "__main__":
     print("manager123 ->", get_password_hash("manager123"))
     print("cashier123 ->", get_password_hash("cashier123"))

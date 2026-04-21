@@ -6,11 +6,6 @@ from app.security.permissions import require_manager
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
-# -------------------------------------------------------------------
-# 1. Звіт по клієнтах (використовує customer_summary_view)
-# -------------------------------------------------------------------
-# app/routers/analytics.py (фрагмент)
-
 @router.get("/customer-summary", response_model=List[Dict[str, Any]])
 def get_sales_by_discount(
     min_percent: int = Query(10, ge=0, description="Мінімальний відсоток знижки клієнта"),
@@ -39,10 +34,6 @@ def get_sales_by_discount(
     finally:
         put_db_connection(conn)
 
-
-# -------------------------------------------------------------------
-# 2. Продажі за категоріями та місяцями (sales_by_category_month_view)
-# -------------------------------------------------------------------
 @router.get("/sales-by-category-month", response_model=List[Dict[str, Any]])
 def get_sales_by_category_month(current_user: dict = Depends(require_manager)):
     conn = get_db_connection()
@@ -66,10 +57,6 @@ def get_sales_by_category_month(current_user: dict = Depends(require_manager)):
     finally:
         put_db_connection(conn)
 
-
-# -------------------------------------------------------------------
-# 3. Акційні товари, які жодного разу не продавались (promo_never_sold_view)
-# -------------------------------------------------------------------
 @router.get("/categories-all-promo-sold", response_model=List[Dict[str, Any]])
 def get_categories_all_promo_sold(
     current_user: dict = Depends(require_manager)
@@ -95,9 +82,6 @@ def get_categories_all_promo_sold(
         put_db_connection(conn)
 
 
-# -------------------------------------------------------------------
-# 4. Товари, що не продавались N днів (функція get_not_sold_for_days)
-# -------------------------------------------------------------------
 @router.get("/not-sold-days", response_model=List[Dict[str, Any]])
 def get_not_sold_for_days(
     days: int = Query(30, ge=1, description="Кількість днів"),
@@ -124,9 +108,6 @@ def get_not_sold_for_days(
     finally:
         put_db_connection(conn)
 
-# -------------------------------------------------------------------
-# 5. Статистика продажів по категоріях для конкретного працівника
-# -------------------------------------------------------------------
 @router.get("/employee-sales/{id_employee}", response_model=List[Dict[str, Any]])
 def get_employee_sales_by_category(
     id_employee: str, 
@@ -135,7 +116,6 @@ def get_employee_sales_by_category(
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # SQL-запит з параметром %s замість хардкоду ID
             query = """
                 SELECT 
                     c.category_name,
@@ -161,7 +141,6 @@ def get_employee_sales_by_category(
                     total_sales_sum DESC;
             """
             
-            # Безпечно передаємо id_employee як кортеж (id_employee,)
             cur.execute(query, (id_employee,))
             rows = cur.fetchall()
             
@@ -170,7 +149,6 @@ def get_employee_sales_by_category(
                 result.append({
                     "category_name": row["category_name"],
                     "unique_checks": row["unique_checks"],
-                    # Використовуємо if ... else 0 для уникнення помилок типу NoneType, якщо продажів не було
                     "total_products_sold": int(row["total_products_sold"]) if row["total_products_sold"] else 0,
                     "total_sales_sum": float(row["total_sales_sum"]) if row["total_sales_sum"] else 0.0
                 })
@@ -182,13 +160,11 @@ def get_employee_sales_by_category(
     finally:
         put_db_connection(conn)
 
-# Додайте це до файлу з вашими роутами (analytics)
 @router.get("/employees/list", response_model=List[Dict[str, Any]])
 def get_employees_list(current_user: dict = Depends(require_manager)):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Беремо id, прізвище та ім'я працівника для випадаючого списку
             cur.execute("""
                 SELECT id_employee, empl_surname, empl_name 
                 FROM employee 

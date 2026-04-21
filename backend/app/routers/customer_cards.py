@@ -12,11 +12,9 @@ def create_customer_card(customer: CustomerCreate, current_user: dict = Depends(
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Find the highest existing card number
             cur.execute("SELECT card_number FROM Customer_Card ORDER BY card_number DESC LIMIT 1")
             last_card_record = cur.fetchone()
             
-            # 2. Generate the new card number
             if last_card_record and last_card_record["card_number"]:
                 last_card = last_card_record["card_number"]
                 numeric_part = int(last_card[4:])
@@ -24,7 +22,6 @@ def create_customer_card(customer: CustomerCreate, current_user: dict = Depends(
             else:
                 new_card_number = "CARD000000001"
 
-            # 3. Insert into Database (Додано city, street, zip_code)
             cur.execute("""
                 INSERT INTO Customer_Card 
                 (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent)
@@ -127,17 +124,15 @@ def delete_customer_card(card_number: str, current_user: dict = Depends(require_
                 raise HTTPException(status_code=404, detail="Карту клієнта не знайдено")
             conn.commit()
     except Exception as e:
-        conn.rollback() # Відкочуємо транзакцію у разі помилки БД
+        conn.rollback()
         error_msg = str(e).lower()
         
-        # Перевіряємо, чи спрацювало обмеження зовнішнього ключа (PostgreSQL)
         if "foreign key" in error_msg or "вік" in error_msg or "violates" in error_msg:
             raise HTTPException(
                 status_code=400, 
                 detail="Неможливо видалити клієнта, оскільки за цією картою закріплені чеки."
             )
             
-        # Якщо це якась інша непередбачувана помилка
         raise HTTPException(status_code=500, detail="Сталася помилка при видаленні клієнта.")
     finally:
         put_db_connection(conn)

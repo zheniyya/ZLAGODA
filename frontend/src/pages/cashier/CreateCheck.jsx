@@ -9,7 +9,6 @@ const CreateCheck = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ── Додавання товару до кошика ────────────────────────────────────────────
   const addToCart = async (e) => {
     e.preventDefault();
     setError('');
@@ -44,30 +43,27 @@ const CreateCheck = () => {
     }
   };
 
-  // ── Зміна кількості вручну ────────────────────────────────────────────────
   const changeQuantity = (upc, delta) => {
     setCart(prev => {
       return prev
         .map(item => {
           if (item.upc !== upc) return item;
           const newQty = item.quantity + delta;
-          if (newQty <= 0) return null;          // позначаємо для видалення
+          if (newQty <= 0) return null;
           if (newQty > item.products_number) {
             setError(`Максимальна кількість: ${item.products_number} шт.`);
             return item;
           }
           return { ...item, quantity: newQty };
         })
-        .filter(Boolean);                        // ВИПРАВЛЕННЯ №11: видаляємо позиції з qty=0
+        .filter(Boolean); 
     });
   };
 
-  // ── Пряме видалення позиції ───────────────────────────────────────────────
   const removeFromCart = (upc) => {
     setCart(prev => prev.filter(item => item.upc !== upc));
   };
 
-  // ── Застосування карти клієнта ────────────────────────────────────────────
   const applyCard = async () => {
     if (!customerCardInput.trim()) return;
     try {
@@ -89,9 +85,6 @@ const CreateCheck = () => {
     setCustomerCardInput('');
   };
 
-  // ── Розрахунок підсумків (лише для відображення) ──────────────────────────
-  // ВИПРАВЛЕННЯ №14: Фінальний розрахунок відбувається на бекенді.
-  // Тут — тільки попередній показ для касира.
   const calculateTotals = () => {
     const rawSum = cart.reduce(
       (acc, item) => acc + parseFloat(item.selling_price) * item.quantity,
@@ -104,14 +97,11 @@ const CreateCheck = () => {
     return { rawSum, discountAmount, totalSum, vat, discountPercent };
   };
 
-  // ── Відправка чека на бекенд ──────────────────────────────────────────────
   const submitCheck = async () => {
     if (cart.length === 0) return;
     setIsSubmitting(true);
     setError('');
-
-    // ВИПРАВЛЕННЯ: payload тепер містить items для бекенду
-    // Бекенд сам розраховує суму, ПДВ і знижку
+    
     const payload = {
       card_number: customerInfo?.card_number || null,
       items: cart.map(item => ({

@@ -15,7 +15,6 @@ print("Підключення до БД...")
 conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 cur = conn.cursor()
 
-# Перевіряємо наявність таблиць
 tables = ["employee", "category", "product", "store_product", "customer_card", "check", "sale"]
 for table in tables:
     cur.execute(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{table}');")

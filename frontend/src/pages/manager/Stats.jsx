@@ -43,7 +43,7 @@ const Stats = () => {
 
   useEffect(() => {
     loadData();
-  }, [activeTab]); // <-- ВИПРАВЛЕНО: тільки зміна вкладки викликає завантаження
+  }, [activeTab]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('uk-UA', {

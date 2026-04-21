@@ -9,7 +9,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL не знайдено")
 
-# Ensure SSL is required for Supabase
 if "?" in DATABASE_URL:
     if "sslmode=require" not in DATABASE_URL:
         DATABASE_URL += "&sslmode=require"

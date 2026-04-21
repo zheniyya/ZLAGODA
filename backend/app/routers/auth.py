@@ -14,7 +14,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # ЗМІНЕНО: тепер отримуємо пароль з Employee_Auth через JOIN
             cur.execute("""
                         SELECT e.id_employee, e.empl_role AS role, a.password_hash
                         FROM Employee e

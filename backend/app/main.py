@@ -3,14 +3,12 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
 
-# Імпортуємо ВСІ роутери
 from app.routers import auth, employees, categories, products, store_products, customer_cards, checks, sales, reports, analytics
 
 from app.database import get_db_connection, put_db_connection
 
 app = FastAPI(title="АІС ZLAGODA")
 
-# CORS (без змін)
 allowed_origins = []
 for port in range(5173, 5201):
     allowed_origins.append(f"http://localhost:{port}")
@@ -24,7 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware для логування
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     print(f"➡️ {request.method} {request.url.path}")
@@ -38,7 +35,6 @@ async def global_exception_handler(request: Request, exc: Exception):
     traceback.print_exc()
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
-# Реєструємо ВСІ роутери
 app.include_router(auth.router, prefix="/api")
 app.include_router(employees.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")

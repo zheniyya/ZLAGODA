@@ -11,7 +11,6 @@ from decimal import Decimal
 router = APIRouter(prefix="/checks", tags=["Checks"])
 
 
-# ─── Розширена схема для створення чека ────────────────────────────────────────
 class SaleItem(BaseModel):
     upc: str
     product_number: int
@@ -22,7 +21,6 @@ class CheckCreate(BaseModel):
     items: List[SaleItem]
 
 
-# ─── ВИПРАВЛЕННЯ №1: Повна транзакція створення чека ──────────────────────────
 @router.post("/", response_model=CheckResponse, status_code=status.HTTP_201_CREATED)
 def create_check(
         check_data: CheckCreate,
@@ -34,7 +32,6 @@ def create_check(
 
     try:
         with conn.cursor() as cur:
-            # --- NEW: Generate sequential check_number (CHK + 7 digits) ---
             cur.execute("""
                 SELECT check_number FROM "Check" 
                 WHERE check_number LIKE 'CHK%' 
@@ -43,15 +40,11 @@ def create_check(
             last_check = cur.fetchone()
             
             if last_check and last_check["check_number"]:
-                # Extract the numeric part (skip the first 3 characters 'CHK')
                 last_id_str = last_check["check_number"]
                 numeric_part = int(last_id_str[3:])
                 check_number = f"CHK{numeric_part + 1:07d}"
             else:
                 check_number = "CHK0000001"
-            # --------------------------------------------------------------
-
-            # 1. Отримуємо знижку клієнта (якщо є карта)
             discount_percent = 0
             if check_data.card_number:
                 cur.execute(
@@ -87,7 +80,6 @@ def create_check(
                     "selling_price": sp["selling_price"],
                 })
 
-            # 3. Розраховуємо суму з урахуванням знижки
             raw_sum = sum(
                 Decimal(str(line["selling_price"])) * line["product_number"]
                 for line in sale_lines
@@ -110,7 +102,6 @@ def create_check(
             ))
             new_check = cur.fetchone()
 
-            # 5. Записуємо позиції Sale та зменшуємо залишки
             for line in sale_lines:
                 cur.execute("""
                     INSERT INTO Sale (upc, check_number, product_number, selling_price)
