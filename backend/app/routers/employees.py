@@ -172,5 +172,22 @@ def delete_employee(id_employee: str, current_user: dict = Depends(require_manag
             if not cur.fetchone():
                 raise HTTPException(status_code=404, detail="Працівника не знайдено")
             conn.commit()
+            
+    except HTTPException:
+        # Re-raise HTTP exceptions (like the 404 above) so they don't get caught by the general Exception block
+        raise
+    except Exception as e:
+        conn.rollback()
+        error_msg = str(e).lower()
+        
+        # Check if the error is due to a foreign key constraint (e.g., they have checks)
+        if "foreign key constraint" in error_msg or "violates foreign key" in error_msg or "update or delete on table" in error_msg:
+            raise HTTPException(
+                status_code=400, 
+                detail="Неможливо видалити працівника, оскільки за ним закріплені існуючі чеки. Видалення призведе до втрати фінансової історії."
+            )
+            
+        # Catch-all for any other database crashes
+        raise HTTPException(status_code=500, detail=f"Внутрішня помилка бази даних: {str(e)}")
     finally:
         put_db_connection(conn)

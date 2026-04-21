@@ -32,8 +32,6 @@ class EmployeeCreate(EmployeeBase):
 
 class EmployeeResponse(EmployeeBase):
     id_employee: str
-    class Config:
-        orm_mode = True
 
 # This is what to return ONLY when creating a new employee
 class EmployeeCreateResponse(BaseModel):
@@ -135,7 +133,7 @@ class CheckCreate(BaseModel):
 class CheckResponse(BaseModel):
     check_number: str
     id_employee: str
-    card_number: Optional[str]
+    card_number: Optional[str] = None
     print_date: datetime
     sum_total: Decimal
     vat: Decimal

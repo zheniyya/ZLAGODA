@@ -128,8 +128,18 @@ const Employees = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm("Звільнити працівника?")) {
-      await apiService.deleteEmployee(id);
-      loadEmployees();
+      try {
+        await apiService.deleteEmployee(id);
+        loadEmployees(); // Reload the list on success
+      } catch (error) {
+        console.error("Помилка при видаленні:", error);
+        
+        // Safely extract the error message from the FastAPI backend response
+        const errorMessage = error.response?.data?.detail || "Сталася невідома помилка при видаленні працівника.";
+        
+        // Display the user-friendly error to the manager
+        alert(errorMessage);
+      }
     }
   };
 

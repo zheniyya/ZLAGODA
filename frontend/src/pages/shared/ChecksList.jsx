@@ -41,13 +41,15 @@ const ChecksList = () => {
 
   const openDetails = async (checkNumber) => {
     setSelectedCheck(checkNumber);
-    setCheckDetails([]);
+    setCheckDetails([]); // Clear previous details immediately
     try {
       const details = await apiService.getCheckDetails(checkNumber);
       setCheckDetails(details);
     } catch (error) {
       console.error("Помилка завантаження деталей чека:", error);
-      alert("Не вдалося завантажити деталі чека.");
+      const errorMsg = error.response?.data?.detail || "Не вдалося завантажити деталі чека.";
+      alert(errorMsg);
+      setSelectedCheck(null); 
     }
   };
 
@@ -63,6 +65,9 @@ const ChecksList = () => {
   };
 
   const totalSum = checks.reduce((acc, c) => acc + Number(c.sum_total), 0);
+  
+  // NEW: Find the full check object from our list to access the card_number
+  const activeCheck = checks.find(c => c.check_number === selectedCheck);
 
   return (
     <div className="p-6 relative">
@@ -135,7 +140,7 @@ const ChecksList = () => {
         </tbody>
       </table>
 
-      {/* Модальне вікно деталей (без змін) */}
+      {/* Модальне вікно деталей */}
       {selectedCheck && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
@@ -143,6 +148,15 @@ const ChecksList = () => {
               <h3 className="text-xl font-bold text-gray-800">Деталі чека #{selectedCheck}</h3>
               <button onClick={() => setSelectedCheck(null)} className="text-gray-500 hover:text-red-600 text-3xl leading-none">&times;</button>
             </div>
+            
+            {/* NEW: Customer Card Display block */}
+            {activeCheck?.card_number && (
+              <div className="mb-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm flex items-center">
+                <span className="font-semibold mr-2">💳 Використана карта клієнта:</span> 
+                <span className="font-mono">{activeCheck.card_number}</span>
+              </div>
+            )}
+
             <div className="max-h-96 overflow-y-auto">
               <table className="w-full mb-4 text-left border-collapse">
                 <thead className="bg-gray-100 sticky top-0">

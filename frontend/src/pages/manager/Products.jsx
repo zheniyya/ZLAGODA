@@ -105,8 +105,13 @@ const Products = () => {
 
   const deleteStoreProduct = async (upc) => {
     if (window.confirm('Видалити цей товар з магазину?')) {
-      await apiService.deleteStoreProduct(upc);
-      loadAllData();
+      try {
+        await apiService.deleteStoreProduct(upc);
+        loadAllData();
+      } catch (err) {
+        const detail = err.response?.data?.detail || 'Помилка видалення товару з магазину.';
+        alert(detail); // Show the error to the user
+      }
     }
   };
 
@@ -126,8 +131,13 @@ const Products = () => {
 
   const deleteProduct = async (id) => {
     if (window.confirm('Видалити товар з довідника?')) {
-      await apiService.deleteProduct(id);
-      loadAllData();
+      try {
+        await apiService.deleteProduct(id);
+        loadAllData();
+      } catch (err) {
+        const detail = err.response?.data?.detail || 'Помилка видалення товару.';
+        alert(detail); // Show the error to the user
+      }
     }
   };
 
@@ -147,8 +157,14 @@ const Products = () => {
 
   const deleteCategory = async (id) => {
     if (window.confirm('Видалити категорію?')) {
-      await apiService.deleteCategory(id);
-      loadAllData();
+      try {
+        await apiService.deleteCategory(id);
+        loadAllData();
+      } catch (err) {
+        // This will catch the 400 error from your FastAPI backend
+        const detail = err.response?.data?.detail || 'Помилка видалення категорії.';
+        alert(detail); // Show the error to the user
+      }
     }
   };
 

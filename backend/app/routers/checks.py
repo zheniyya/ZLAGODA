@@ -6,6 +6,7 @@ from app.security.permissions import require_cashier, require_manager, get_curre
 from app.database import get_db_connection
 import uuid
 from datetime import datetime, date
+from decimal import Decimal
 
 router = APIRouter(prefix="/checks", tags=["Checks"])
 
@@ -80,12 +81,12 @@ def create_check(
 
             # 3. Розраховуємо суму з урахуванням знижки
             raw_sum = sum(
-                float(line["selling_price"]) * line["product_number"]
+                Decimal(str(line["selling_price"])) * line["product_number"]
                 for line in sale_lines
             )
-            discount_multiplier = 1 - (discount_percent / 100)
+            discount_multiplier = Decimal('1') - (Decimal(str(discount_percent)) / Decimal('100'))
             sum_total = round(raw_sum * discount_multiplier, 4)
-            vat = round(sum_total * 0.20, 4)
+            vat = round(sum_total * Decimal('0.20'), 4)
 
             # 4. Створюємо запис чека
             cur.execute("""
@@ -190,16 +191,24 @@ def get_check(
         conn=Depends(get_db_connection)
 ):
     """Отримання конкретного чеку."""
-    with conn.cursor() as cur:
-        cur.execute('SELECT * FROM "Check" WHERE check_number = %s', (check_number,))
-        check = cur.fetchone()
-        if not check:
-            raise HTTPException(status_code=404, detail="Чек не знайдено")
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM "Check" WHERE check_number = %s', (check_number,))
+            check = cur.fetchone()
+            
+            if not check:
+                raise HTTPException(status_code=404, detail="Чек не знайдено")
 
-        if current_user["role"] == "cashier" and check["id_employee"] != current_user["id_employee"]:
-            raise HTTPException(status_code=403, detail="Ви не маєте доступу до цього чеку")
+            if current_user["role"] == "cashier" and check["id_employee"] != current_user["id_employee"]:
+                raise HTTPException(status_code=403, detail="Ви не маєте доступу до цього чеку")
 
-        return check
+            return check
+    except HTTPException:
+        raise
+    except Exception as e:
+        # This will print the exact validation or SQL error to your terminal
+        print(f"Error fetching check: {str(e)}") 
+        raise HTTPException(status_code=500, detail="Внутрішня помилка сервера при завантаженні чека")
 
 
 @router.get("/{check_number}/items")
@@ -209,26 +218,34 @@ def get_check_items(
         conn=Depends(get_db_connection)
 ):
     """Отримання списку куплених товарів для конкретного чеку."""
-    with conn.cursor() as cur:
-        cur.execute('SELECT id_employee FROM "Check" WHERE check_number = %s', (check_number,))
-        check = cur.fetchone()
-        if not check:
-            raise HTTPException(status_code=404, detail="Чек не знайдено")
-        if current_user["role"] == "cashier" and check["id_employee"] != current_user["id_employee"]:
-            raise HTTPException(status_code=403, detail="Ви не маєте доступу до цього чеку")
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id_employee FROM "Check" WHERE check_number = %s', (check_number,))
+            check = cur.fetchone()
+            
+            if not check:
+                raise HTTPException(status_code=404, detail="Чек не знайдено")
+                
+            if current_user["role"] == "cashier" and check["id_employee"] != current_user["id_employee"]:
+                raise HTTPException(status_code=403, detail="Ви не маєте доступу до цього чеку")
 
-        cur.execute("""
-            SELECT p.product_name   AS name,
-                   s.product_number AS qty,
-                   s.selling_price  AS price,
-                   (s.product_number * s.selling_price) AS line_total
-            FROM Sale s
-                     JOIN Store_Product sp ON s.upc = sp.upc
-                     JOIN Product p ON sp.id_product = p.id_product
-            WHERE s.check_number = %s
-        """, (check_number,))
-        return cur.fetchall()
-
+            cur.execute("""
+                SELECT p.product_name   AS name,
+                       s.product_number AS qty,
+                       s.selling_price  AS price,
+                       (s.product_number * s.selling_price) AS line_total
+                FROM Sale s
+                         JOIN Store_Product sp ON s.upc = sp.upc
+                         JOIN Product p ON sp.id_product = p.id_product
+                WHERE s.check_number = %s
+            """, (check_number,))
+            return cur.fetchall()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching check items: {str(e)}")
+        raise HTTPException(status_code=500, detail="Внутрішня помилка сервера при завантаженні позицій чека")
 
 @router.delete("/{check_number}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_check(

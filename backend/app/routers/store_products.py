@@ -115,7 +115,6 @@ def create_or_update_store_product(sp: StoreProductCreate, current_user: dict = 
 
             conn.commit()
             return saved_product
-
     except HTTPException:
         raise
     except Exception as e:
@@ -270,7 +269,6 @@ def update_store_product(UPC: str, sp: StoreProductBase, current_user: dict = De
 
             conn.commit()
             return updated
-
     except HTTPException:
         raise
     except Exception as e:
